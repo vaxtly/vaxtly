@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Environment;
+use App\Services\DataExportImportService;
 use App\Services\PostmanImportService;
 use App\Services\RemoteSyncService;
 use App\Services\VaultSyncService;
@@ -26,6 +27,13 @@ new class extends Component
     public array $importStatus = [];
 
     public bool $isImporting = false;
+
+    // Export properties
+    public string $exportType = 'all';
+
+    public bool $isExporting = false;
+
+    public array $exportStatus = [];
 
     // Remote sync properties
     public string $remoteProvider = '';
@@ -127,7 +135,7 @@ new class extends Component
         $this->dispatch('layout-updated', layout: $this->layout);
     }
 
-    public function importPostman(): void
+    public function importData(): void
     {
         $this->validate();
 
@@ -135,37 +143,83 @@ new class extends Component
         $this->importStatus = [];
 
         try {
-            $service = new PostmanImportService;
-            $result = $service->import($this->importFile);
+            // Detect if this is a Vaxtly export by peeking at the JSON
+            $isVaxtly = false;
+            $extension = strtolower($this->importFile->getClientOriginalExtension());
 
-            $parts = [];
-            if ($result['collections'] > 0) {
-                $parts[] = "{$result['collections']} collection(s)";
-            }
-            if ($result['folders'] > 0) {
-                $parts[] = "{$result['folders']} folder(s)";
-            }
-            if ($result['requests'] > 0) {
-                $parts[] = "{$result['requests']} request(s)";
-            }
-            if ($result['environments'] > 0) {
-                $parts[] = "{$result['environments']} environment(s)";
+            if ($extension === 'json') {
+                $content = file_get_contents($this->importFile->getPathname());
+                $peek = json_decode($content, true);
+
+                if (json_last_error() === JSON_ERROR_NONE && ! empty($peek['vaxtly_export'])) {
+                    $isVaxtly = true;
+                }
             }
 
-            if (! empty($parts)) {
-                $this->importStatus = [
-                    'type' => 'success',
-                    'message' => 'Imported '.implode(', ', $parts),
-                ];
+            if ($isVaxtly) {
+                $workspaceId = app(WorkspaceService::class)->activeId();
+                $service = new DataExportImportService;
+                $result = $service->import($content, $workspaceId);
+
+                $parts = [];
+                if ($result['collections'] > 0) {
+                    $parts[] = "{$result['collections']} collection(s)";
+                }
+                if ($result['environments'] > 0) {
+                    $parts[] = "{$result['environments']} environment(s)";
+                }
+                if ($result['config']) {
+                    $parts[] = 'workspace config';
+                }
+
+                if (! empty($parts)) {
+                    $this->importStatus = [
+                        'type' => 'success',
+                        'message' => 'Imported '.implode(', ', $parts),
+                    ];
+                } else {
+                    $this->importStatus = [
+                        'type' => 'warning',
+                        'message' => 'No items were imported. The file may be empty.',
+                    ];
+                }
+
+                if (! empty($result['errors'])) {
+                    $this->importStatus['errors'] = $result['errors'];
+                }
             } else {
-                $this->importStatus = [
-                    'type' => 'warning',
-                    'message' => 'No items were imported. The file may be empty or in an unsupported format.',
-                ];
-            }
+                $service = new PostmanImportService;
+                $result = $service->import($this->importFile);
 
-            if (! empty($result['errors'])) {
-                $this->importStatus['errors'] = $result['errors'];
+                $parts = [];
+                if ($result['collections'] > 0) {
+                    $parts[] = "{$result['collections']} collection(s)";
+                }
+                if ($result['folders'] > 0) {
+                    $parts[] = "{$result['folders']} folder(s)";
+                }
+                if ($result['requests'] > 0) {
+                    $parts[] = "{$result['requests']} request(s)";
+                }
+                if ($result['environments'] > 0) {
+                    $parts[] = "{$result['environments']} environment(s)";
+                }
+
+                if (! empty($parts)) {
+                    $this->importStatus = [
+                        'type' => 'success',
+                        'message' => 'Imported '.implode(', ', $parts),
+                    ];
+                } else {
+                    $this->importStatus = [
+                        'type' => 'warning',
+                        'message' => 'No items were imported. The file may be empty or in an unsupported format.',
+                    ];
+                }
+
+                if (! empty($result['errors'])) {
+                    $this->importStatus['errors'] = $result['errors'];
+                }
             }
 
             $this->dispatch('collections-updated');
@@ -181,10 +235,52 @@ new class extends Component
         }
     }
 
+    public function exportData()
+    {
+        $this->isExporting = true;
+        $this->exportStatus = [];
+
+        try {
+            $workspaceId = app(WorkspaceService::class)->activeId();
+            $service = new DataExportImportService;
+
+            $data = match ($this->exportType) {
+                'collections' => $service->exportCollections($workspaceId),
+                'environments' => $service->exportEnvironments($workspaceId),
+                'config' => $service->exportConfig($workspaceId),
+                default => $service->exportAll($workspaceId),
+            };
+
+            $json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            $filename = 'vaxtly-export-'.$this->exportType.'-'.now()->format('Y-m-d-His').'.json';
+
+            $this->exportStatus = [
+                'type' => 'success',
+                'message' => 'Export complete!',
+            ];
+
+            return response()->streamDownload(function () use ($json) {
+                echo $json;
+            }, $filename, ['Content-Type' => 'application/json']);
+        } catch (\Exception $e) {
+            $this->exportStatus = [
+                'type' => 'error',
+                'message' => 'Export failed: '.$e->getMessage(),
+            ];
+        } finally {
+            $this->isExporting = false;
+        }
+    }
+
     public function resetImport(): void
     {
         $this->importFile = null;
         $this->importStatus = [];
+    }
+
+    public function resetExport(): void
+    {
+        $this->exportStatus = [];
     }
 
     // Remote sync methods
@@ -422,6 +518,7 @@ new class extends Component
         $this->syncResult = [];
         $this->vaultStatus = '';
         $this->vaultSyncResult = [];
+        $this->exportStatus = [];
     }
 
     public function close(): void
@@ -429,6 +526,7 @@ new class extends Component
         $this->show = false;
         $this->activeTab = 'general';
         $this->resetImport();
+        $this->resetExport();
         $this->remoteStatus = '';
         $this->syncResult = [];
         $this->vaultStatus = '';

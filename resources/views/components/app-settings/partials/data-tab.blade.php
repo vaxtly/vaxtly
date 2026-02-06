@@ -1,12 +1,79 @@
 {{-- Data Tab --}}
 <div class="space-y-4 max-h-[60vh] overflow-y-auto beartropy-thin-scrollbar pr-2">
-    {{-- Import Section Header --}}
+
+    {{-- Export Section --}}
     <div>
-        <p class="text-sm font-medium text-gray-900 dark:text-white">Import from Postman</p>
-        <p class="text-xs text-gray-500 dark:text-gray-400">Import collections with folders and environments</p>
+        <p class="text-sm font-medium text-gray-900 dark:text-white">Export Data</p>
+        <p class="text-xs text-gray-500 dark:text-gray-400">Download your workspace data as a JSON file</p>
     </div>
 
-    {{-- Status Message --}}
+    {{-- Export Status Message --}}
+    @if(!empty($exportStatus))
+        <div class="p-3 rounded-lg text-sm {{ $exportStatus['type'] === 'success' ? 'bg-green-50 dark:bg-green-900/30 text-green-800 dark:text-green-300' : 'bg-red-50 dark:bg-red-900/30 text-red-800 dark:text-red-300' }}">
+            <div class="flex items-center gap-2">
+                @if($exportStatus['type'] === 'success')
+                    <svg class="w-5 h-5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                    </svg>
+                @else
+                    <svg class="w-5 h-5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+                    </svg>
+                @endif
+                <p>{{ $exportStatus['message'] }}</p>
+            </div>
+        </div>
+    @endif
+
+    {{-- Export Type Selector --}}
+    <div class="flex flex-wrap gap-2">
+        @foreach(['all' => 'All', 'collections' => 'Collections', 'environments' => 'Environments', 'config' => 'Config'] as $value => $label)
+            <label class="relative cursor-pointer">
+                <input
+                    type="radio"
+                    wire:model="exportType"
+                    value="{{ $value }}"
+                    class="peer sr-only"
+                />
+                <div class="px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors
+                    peer-checked:bg-blue-50 peer-checked:border-blue-500 peer-checked:text-blue-700
+                    dark:peer-checked:bg-blue-900/30 dark:peer-checked:border-blue-400 dark:peer-checked:text-blue-300
+                    border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400
+                    hover:border-gray-400 dark:hover:border-gray-500">
+                    {{ $label }}
+                </div>
+            </label>
+        @endforeach
+    </div>
+
+    {{-- Export Button --}}
+    <x-beartropy-ui::button
+        wire:click="exportData"
+        wire:loading.attr="disabled"
+        wire:target="exportData"
+        primary
+        sm
+    >
+        <span wire:loading.remove wire:target="exportData">Export</span>
+        <span wire:loading wire:target="exportData" class="flex items-center gap-2">
+            <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Exporting...
+        </span>
+    </x-beartropy-ui::button>
+
+    {{-- Divider --}}
+    <div class="border-t border-gray-200 dark:border-gray-700"></div>
+
+    {{-- Import Section Header --}}
+    <div>
+        <p class="text-sm font-medium text-gray-900 dark:text-white">Import Data</p>
+        <p class="text-xs text-gray-500 dark:text-gray-400">Import from a Vaxtly export or Postman file</p>
+    </div>
+
+    {{-- Import Status Message --}}
     @if(!empty($importStatus))
         <div class="p-3 rounded-lg text-sm {{ $importStatus['type'] === 'success' ? 'bg-green-50 dark:bg-green-900/30 text-green-800 dark:text-green-300' : ($importStatus['type'] === 'warning' ? 'bg-yellow-50 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300' : 'bg-red-50 dark:bg-red-900/30 text-red-800 dark:text-red-300') }}">
             <div class="flex items-start gap-2">
@@ -89,14 +156,14 @@
     @if($importFile)
         <div class="flex gap-2">
             <x-beartropy-ui::button
-                wire:click="importPostman"
+                wire:click="importData"
                 wire:loading.attr="disabled"
-                wire:target="importPostman"
+                wire:target="importData"
                 primary
                 sm
             >
-                <span wire:loading.remove wire:target="importPostman">Import</span>
-                <span wire:loading wire:target="importPostman" class="flex items-center gap-2">
+                <span wire:loading.remove wire:target="importData">Import</span>
+                <span wire:loading wire:target="importData" class="flex items-center gap-2">
                     <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -122,28 +189,28 @@
         <p class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">Supported formats:</p>
         <ul class="text-xs text-gray-500 dark:text-gray-400 space-y-1">
             <li class="flex items-center gap-2">
+                <svg class="w-3.5 h-3.5 text-blue-500" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 9h-2v6h2v-6zm0-4h-2v2h2V7z"/>
+                </svg>
+                Vaxtly export (.json)
+            </li>
+            <li class="flex items-center gap-2">
                 <svg class="w-3.5 h-3.5 text-orange-500" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 9h-2v6h2v-6zm0-4h-2v2h2V7z"/>
                 </svg>
-                Single collection/environment (.json)
+                Postman collection/environment (.json)
             </li>
             <li class="flex items-center gap-2">
                 <svg class="w-3.5 h-3.5 text-purple-500" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 9h-2v6h2v-6zm0-4h-2v2h2V7z"/>
                 </svg>
-                Workspace data dump (.json)
-            </li>
-            <li class="flex items-center gap-2">
-                <svg class="w-3.5 h-3.5 text-blue-500" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6 10H6v-2h8v2zm4-4H6v-2h12v2z"/>
-                </svg>
-                "Export Data" archive (.zip)
+                Postman workspace data dump (.json)
             </li>
             <li class="flex items-center gap-2">
                 <svg class="w-3.5 h-3.5 text-green-500" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                    <path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6 10H6v-2h8v2zm4-4H6v-2h12v2z"/>
                 </svg>
-                Folder structure preserved
+                Postman "Export Data" archive (.zip)
             </li>
         </ul>
     </div>
