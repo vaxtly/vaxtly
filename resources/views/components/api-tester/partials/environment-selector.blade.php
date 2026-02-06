@@ -82,6 +82,7 @@
 
         {{-- Trigger Button --}}
         <button
+            x-ref="trigger"
             @click="toggle()"
             type="button"
             class="flex items-center gap-2 px-2.5 py-1.5 text-xs font-medium rounded-md border transition-colors cursor-pointer
