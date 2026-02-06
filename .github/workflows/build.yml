@@ -76,7 +76,9 @@ jobs:
       - name: Set version
         shell: bash
         run: |
-          sed -i.bak "s/'version' => env('NATIVEPHP_APP_VERSION', '[^']*')/'version' => env('NATIVEPHP_APP_VERSION', '${{ inputs.version }}')/" config/nativephp.php
+          VERSION="${{ inputs.version }}"
+          VERSION="${VERSION#v}"
+          sed -i.bak "s/'version' => env('NATIVEPHP_APP_VERSION', '[^']*')/'version' => env('NATIVEPHP_APP_VERSION', '$VERSION')/" config/nativephp.php
 
       - name: Build and publish native app
         run: php artisan native:build ${{ matrix.platform }} ${{ matrix.arch }} --publish --no-interaction
