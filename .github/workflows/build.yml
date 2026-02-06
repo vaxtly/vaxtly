@@ -1,0 +1,93 @@
+name: Build Desktop App
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g. 0.0.1)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux
+            arch: x64
+          - os: windows-latest
+            platform: win
+            arch: x64
+
+    runs-on: ${{ matrix.os }}
+    name: Build (${{ matrix.platform }}-${{ matrix.arch }})
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: zip, sqlite3, fileinfo
+          tools: composer:v2
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Install Electron dependencies
+        run: npm ci
+        working-directory: nativephp/electron
+
+      - name: Build Electron plugin
+        run: npm run plugin:build
+        working-directory: nativephp/electron
+
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: Copy environment file
+        shell: bash
+        run: cp .env.example .env
+
+      - name: Generate application key
+        run: php artisan key:generate
+
+      - name: Configure production environment
+        shell: bash
+        run: |
+          sed -i 's/APP_ENV=local/APP_ENV=production/' .env
+          sed -i 's/APP_DEBUG=true/APP_DEBUG=false/' .env
+          sed -i 's/GITHUB_REPO=/GITHUB_REPO=vaxtly/' .env
+          sed -i 's/GITHUB_OWNER=/GITHUB_OWNER=vaxtly/' .env
+          sed -i 's/GITHUB_RELEASE_TYPE=draft/GITHUB_RELEASE_TYPE=release/' .env
+          sed -i "s/GITHUB_TOKEN=/GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}/" .env
+
+      - name: Set version
+        shell: bash
+        run: |
+          sed -i.bak "s/'version' => env('NATIVEPHP_APP_VERSION', '[^']*')/'version' => env('NATIVEPHP_APP_VERSION', '${{ inputs.version }}')/" config/nativephp.php
+
+      - name: Build and publish native app
+        run: php artisan native:build ${{ matrix.platform }} ${{ matrix.arch }} --publish --no-interaction
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: vaxtly-${{ matrix.platform }}-${{ matrix.arch }}
+          path: |
+            nativephp/electron/dist/*.deb
+            nativephp/electron/dist/*.AppImage
+            nativephp/electron/dist/*.exe
+            nativephp/electron/dist/*-setup.exe
+          retention-days: 30

@@ -1,0 +1,437 @@
+<?php
+
+use App\Models\Environment;
+use App\Services\PostmanImportService;
+use App\Services\RemoteSyncService;
+use App\Services\VaultSyncService;
+use App\Services\WorkspaceService;
+use Livewire\Attributes\On;
+use Livewire\Attributes\Validate;
+use Livewire\Component;
+use Livewire\WithFileUploads;
+
+new class extends Component
+{
+    use WithFileUploads;
+
+    public $show = false;
+
+    public $layout;
+
+    public string $activeTab = 'general';
+
+    #[Validate('required|file|mimes:json,zip|max:10240')]
+    public $importFile;
+
+    public array $importStatus = [];
+
+    public bool $isImporting = false;
+
+    // Remote sync properties
+    public string $remoteProvider = '';
+
+    public string $remoteRepository = '';
+
+    public string $remoteToken = '';
+
+    public string $remoteBranch = 'main';
+
+    public bool $remoteAutoSync = false;
+
+    public string $remoteStatus = '';
+
+    public bool $isTesting = false;
+
+    public bool $isSyncing = false;
+
+    public array $syncResult = [];
+
+    public array $conflicts = [];
+
+    public bool $showConflictModal = false;
+
+    // Vault properties
+    public string $vaultProvider = '';
+
+    public string $vaultUrl = '';
+
+    public string $vaultAuthMethod = 'token';
+
+    public string $vaultToken = '';
+
+    public string $vaultRoleId = '';
+
+    public string $vaultSecretId = '';
+
+    public string $vaultNamespace = '';
+
+    public string $vaultMount = 'secret';
+
+    public string $vaultStatus = '';
+
+    public bool $isVaultTesting = false;
+
+    public bool $isVaultSyncing = false;
+
+    public array $vaultSyncResult = [];
+
+    public function mount(): void
+    {
+        $this->layout = get_setting('requests.layout', 'columns');
+        $this->loadRemoteSettings();
+        $this->loadVaultSettings();
+    }
+
+    private function loadRemoteSettings(): void
+    {
+        $ws = app(WorkspaceService::class);
+        $this->remoteProvider = $ws->getSetting('remote.provider', '') ?? '';
+        $this->remoteRepository = $ws->getSetting('remote.repository', '') ?? '';
+        $this->remoteToken = $ws->getSetting('remote.token', '') ?? '';
+        $this->remoteBranch = $ws->getSetting('remote.branch', 'main') ?? 'main';
+        $this->remoteAutoSync = (bool) $ws->getSetting('remote.auto_sync', false);
+    }
+
+    private function loadVaultSettings(): void
+    {
+        $ws = app(WorkspaceService::class);
+        $this->vaultProvider = $ws->getSetting('vault.provider', '') ?? '';
+        $this->vaultUrl = $ws->getSetting('vault.url', '') ?? '';
+        $this->vaultAuthMethod = $ws->getSetting('vault.auth_method', 'token') ?? 'token';
+        $this->vaultToken = $ws->getSetting('vault.token', '') ?? '';
+        $this->vaultRoleId = $ws->getSetting('vault.role_id', '') ?? '';
+        $this->vaultSecretId = $ws->getSetting('vault.secret_id', '') ?? '';
+        $this->vaultNamespace = $ws->getSetting('vault.namespace', '') ?? '';
+        // Mount contains full engine path (e.g., 'secret/myapp')
+        $this->vaultMount = $ws->getSetting('vault.mount', 'secret') ?? 'secret';
+    }
+
+    public function updatedLayout($value): void
+    {
+        set_setting('requests.layout', $value);
+        $this->dispatch('layout-updated', layout: $value);
+    }
+
+    #[On('open-settings')]
+    #[On('native:App\Events\OpenSettingsRequested')]
+    public function open(): void
+    {
+        $this->show = true;
+    }
+
+    #[On('toggle-layout')]
+    public function toggleLayout(): void
+    {
+        $this->layout = $this->layout === 'rows' ? 'columns' : 'rows';
+        set_setting('requests.layout', $this->layout);
+        $this->dispatch('layout-updated', layout: $this->layout);
+    }
+
+    public function importPostman(): void
+    {
+        $this->validate();
+
+        $this->isImporting = true;
+        $this->importStatus = [];
+
+        try {
+            $service = new PostmanImportService;
+            $result = $service->import($this->importFile);
+
+            $parts = [];
+            if ($result['collections'] > 0) {
+                $parts[] = "{$result['collections']} collection(s)";
+            }
+            if ($result['folders'] > 0) {
+                $parts[] = "{$result['folders']} folder(s)";
+            }
+            if ($result['requests'] > 0) {
+                $parts[] = "{$result['requests']} request(s)";
+            }
+            if ($result['environments'] > 0) {
+                $parts[] = "{$result['environments']} environment(s)";
+            }
+
+            if (! empty($parts)) {
+                $this->importStatus = [
+                    'type' => 'success',
+                    'message' => 'Imported '.implode(', ', $parts),
+                ];
+            } else {
+                $this->importStatus = [
+                    'type' => 'warning',
+                    'message' => 'No items were imported. The file may be empty or in an unsupported format.',
+                ];
+            }
+
+            if (! empty($result['errors'])) {
+                $this->importStatus['errors'] = $result['errors'];
+            }
+
+            $this->dispatch('collections-updated');
+            $this->dispatch('environments-updated');
+        } catch (\Exception $e) {
+            $this->importStatus = [
+                'type' => 'error',
+                'message' => 'Import failed: '.$e->getMessage(),
+            ];
+        } finally {
+            $this->isImporting = false;
+            $this->importFile = null;
+        }
+    }
+
+    public function resetImport(): void
+    {
+        $this->importFile = null;
+        $this->importStatus = [];
+    }
+
+    // Remote sync methods
+    public function saveRemoteSettings(): void
+    {
+        $ws = app(WorkspaceService::class);
+        $ws->setSetting('remote.provider', $this->remoteProvider);
+        $ws->setSetting('remote.repository', $this->remoteRepository);
+        $ws->setSetting('remote.token', $this->remoteToken);
+        $ws->setSetting('remote.branch', $this->remoteBranch ?: 'main');
+        $ws->setSetting('remote.auto_sync', $this->remoteAutoSync ? '1' : '0');
+
+        $this->remoteStatus = 'Settings saved.';
+    }
+
+    public function testConnection(): void
+    {
+        $this->isTesting = true;
+        $this->remoteStatus = '';
+
+        try {
+            $this->saveRemoteSettings();
+
+            $service = new RemoteSyncService;
+            if ($service->testConnection()) {
+                $this->remoteStatus = 'Connection successful!';
+            } else {
+                $this->remoteStatus = 'Connection failed. Check your credentials and repository.';
+            }
+        } catch (\Exception $e) {
+            $this->remoteStatus = 'Error: '.$e->getMessage();
+        } finally {
+            $this->isTesting = false;
+        }
+    }
+
+    public function syncNow(): void
+    {
+        $this->isSyncing = true;
+        $this->syncResult = [];
+        $this->conflicts = [];
+
+        try {
+            $this->saveRemoteSettings();
+
+            $service = new RemoteSyncService;
+            $result = $service->pull();
+
+            $this->syncResult = [
+                'pulled' => $result->pulled,
+                'errors' => $result->errors,
+            ];
+
+            if (! empty($result->conflicts)) {
+                $this->conflicts = $result->conflicts;
+                $this->showConflictModal = true;
+            }
+
+            if ($result->pulled > 0) {
+                $this->dispatch('collections-updated');
+            }
+        } catch (\Exception $e) {
+            $this->syncResult = ['errors' => [$e->getMessage()]];
+        } finally {
+            $this->isSyncing = false;
+        }
+    }
+
+    public function pushAll(): void
+    {
+        $this->isSyncing = true;
+        $this->syncResult = [];
+
+        try {
+            $service = new RemoteSyncService;
+            $result = $service->pushAll();
+
+            $this->syncResult = [
+                'pushed' => $result->pushed,
+                'errors' => $result->errors,
+            ];
+
+            if (! empty($result->conflicts)) {
+                $this->conflicts = array_merge($this->conflicts, $result->conflicts);
+                $this->showConflictModal = true;
+            }
+
+            if ($result->pushed > 0) {
+                $this->dispatch('collections-updated');
+            }
+        } catch (\Exception $e) {
+            $this->syncResult = ['errors' => [$e->getMessage()]];
+        } finally {
+            $this->isSyncing = false;
+        }
+    }
+
+    public function resolveConflict(string $collectionId, string $choice): void
+    {
+        $service = new RemoteSyncService;
+        $collection = \App\Models\Collection::find($collectionId);
+
+        if (! $collection) {
+            return;
+        }
+
+        $conflict = collect($this->conflicts)->firstWhere('collection_id', $collectionId);
+
+        try {
+            if ($choice === 'local') {
+                $service->forceKeepLocal($collection, $conflict['remote_sha'] ?? null);
+            } elseif ($choice === 'remote' && $conflict) {
+                $service->forceKeepRemote($collection, $conflict['remote_path'], $conflict['remote_sha']);
+            }
+
+            // Remove resolved conflict
+            $this->conflicts = array_values(
+                array_filter($this->conflicts, fn ($c) => $c['collection_id'] !== $collectionId)
+            );
+
+            if (empty($this->conflicts)) {
+                $this->showConflictModal = false;
+            }
+
+            $this->dispatch('collections-updated');
+        } catch (\Exception $e) {
+            $this->syncResult = ['errors' => [$e->getMessage()]];
+        }
+    }
+
+    // Vault methods
+    public function saveVaultSettings(): void
+    {
+        $ws = app(WorkspaceService::class);
+        $ws->setSetting('vault.provider', $this->vaultProvider);
+        $ws->setSetting('vault.url', $this->vaultUrl);
+        $ws->setSetting('vault.auth_method', $this->vaultAuthMethod);
+        $ws->setSetting('vault.token', $this->vaultToken);
+        $ws->setSetting('vault.role_id', $this->vaultRoleId);
+        $ws->setSetting('vault.secret_id', $this->vaultSecretId);
+        $ws->setSetting('vault.namespace', $this->vaultNamespace);
+        // Mount contains full engine path (e.g., 'secret/myapp')
+        $ws->setSetting('vault.mount', $this->vaultMount ?: 'secret');
+
+        $this->vaultStatus = 'Settings saved.';
+    }
+
+    public function testVaultConnection(): void
+    {
+        $this->isVaultTesting = true;
+        $this->vaultStatus = '';
+
+        try {
+            $this->saveVaultSettings();
+
+            $service = new VaultSyncService;
+            if ($service->testConnection()) {
+                $this->vaultStatus = 'Connection successful!';
+            } else {
+                $this->vaultStatus = 'Connection failed. Check your Vault URL and credentials.';
+            }
+        } catch (\Exception $e) {
+            $this->vaultStatus = 'Error: '.$e->getMessage();
+        } finally {
+            $this->isVaultTesting = false;
+        }
+    }
+
+    public function pullFromVault(): void
+    {
+        $this->isVaultSyncing = true;
+        $this->vaultSyncResult = [];
+
+        try {
+            $this->saveVaultSettings();
+
+            $service = new VaultSyncService;
+            $result = $service->pullAll();
+
+            $this->vaultSyncResult = $result;
+
+            if ($result['created'] > 0) {
+                $this->dispatch('environments-updated');
+            }
+        } catch (\Exception $e) {
+            $this->vaultSyncResult = ['created' => 0, 'errors' => [$e->getMessage()]];
+        } finally {
+            $this->isVaultSyncing = false;
+        }
+    }
+
+    public function pushAllToVault(): void
+    {
+        $this->isVaultSyncing = true;
+        $this->vaultSyncResult = [];
+
+        try {
+            $this->saveVaultSettings();
+
+            $service = new VaultSyncService;
+            $pushed = 0;
+            $errors = [];
+
+            $workspaceId = app(WorkspaceService::class)->activeId();
+            $environments = Environment::where('vault_synced', true)->forWorkspace($workspaceId)->get();
+            foreach ($environments as $environment) {
+                try {
+                    $variables = $environment->variables ?? [];
+                    $service->pushVariables($environment, $variables);
+                    $pushed++;
+                } catch (\Exception $e) {
+                    $errors[] = "Failed to push '{$environment->name}': ".$e->getMessage();
+                }
+            }
+
+            $this->vaultSyncResult = ['pushed' => $pushed, 'errors' => $errors];
+
+            if ($pushed > 0) {
+                $this->dispatch('environments-updated');
+            }
+        } catch (\Exception $e) {
+            $this->vaultSyncResult = ['pushed' => 0, 'errors' => [$e->getMessage()]];
+        } finally {
+            $this->isVaultSyncing = false;
+        }
+    }
+
+    #[On('workspace-switched')]
+    public function onWorkspaceSwitched(): void
+    {
+        app(WorkspaceService::class)->clearCache();
+        $this->loadRemoteSettings();
+        $this->loadVaultSettings();
+        $this->remoteStatus = '';
+        $this->syncResult = [];
+        $this->vaultStatus = '';
+        $this->vaultSyncResult = [];
+    }
+
+    public function close(): void
+    {
+        $this->show = false;
+        $this->activeTab = 'general';
+        $this->resetImport();
+        $this->remoteStatus = '';
+        $this->syncResult = [];
+        $this->vaultStatus = '';
+        $this->vaultSyncResult = [];
+    }
+};
