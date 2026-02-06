@@ -617,7 +617,7 @@
             </p>
 
             <div class="hero-actions animate-in delay-3">
-                <a href="https://github.com/vaxtly/vaxtly/releases/latest" class="btn btn-primary" target="_blank" rel="noopener">
+                <a id="dl-hero" href="https://github.com/vaxtly/vaxtly/releases/latest" class="btn btn-primary">
                     <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
                     Download
                 </a>
@@ -721,7 +721,7 @@
         </p>
 
         <div class="download-cards">
-            <a href="https://github.com/vaxtly/vaxtly/releases/latest" class="download-card" target="_blank" rel="noopener">
+            <a id="dl-win" href="https://github.com/vaxtly/vaxtly/releases/latest" class="download-card">
                 <svg fill="currentColor" viewBox="0 0 24 24"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
                 <h3>Windows</h3>
                 <p>.exe installer</p>
@@ -740,10 +740,20 @@
                 </span>
             </div>
 
-            <a href="https://github.com/vaxtly/vaxtly/releases/latest" class="download-card" target="_blank" rel="noopener">
+            <a id="dl-appimage" href="https://github.com/vaxtly/vaxtly/releases/latest" class="download-card">
                 <svg fill="currentColor" viewBox="0 0 24 24"><path d="M12.504 0c-.155 0-.311.002-.465.006C7.44.123 3.87 3.124 3.002 7.202 1.27 7.7 0 9.281 0 11.156c0 2.273 1.734 4.127 3.882 4.322v.002h4.145c.19 0 .345-.154.345-.345v-.69c0-.19-.155-.345-.345-.345H3.882c-1.357 0-2.573-.93-2.89-2.252a3.007 3.007 0 012.108-3.476l.464-.155.097-.484c.598-2.97 3.06-5.346 6.165-5.703a6.74 6.74 0 011.64-.048c3.562.33 6.352 3.252 6.55 6.83l.044.803.803.044c1.523.084 2.756 1.248 2.94 2.756a2.975 2.975 0 01-2.076 3.193c-.11.037-.223.06-.337.073l-.257.017h-3.754c-.19 0-.345.154-.345.345v.69c0 .19.155.345.345.345h3.754a3.652 3.652 0 003.62-3.317c.186-1.992-1.138-3.784-3.07-4.235C19.187 3.236 15.465.032 12.504 0zM8.63 14.384l3.21-3.21c.136-.136.357-.136.494 0l3.21 3.21c.136.136.136.357 0 .494l-.353.353c-.136.136-.357.136-.494 0l-1.967-1.967v6.167c0 .193-.157.35-.35.35h-.5c-.193 0-.35-.157-.35-.35v-6.167l-1.967 1.967c-.136.136-.357.136-.494 0l-.353-.353c-.136-.137-.136-.358-.001-.494z"/></svg>
                 <h3>Linux</h3>
-                <p>.AppImage / .deb</p>
+                <p>.AppImage</p>
+                <span class="download-link">
+                    Download
+                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
+                </span>
+            </a>
+
+            <a id="dl-deb" href="https://github.com/vaxtly/vaxtly/releases/latest" class="download-card">
+                <svg fill="currentColor" viewBox="0 0 24 24"><path d="M12.504 0c-.155 0-.311.002-.465.006C7.44.123 3.87 3.124 3.002 7.202 1.27 7.7 0 9.281 0 11.156c0 2.273 1.734 4.127 3.882 4.322v.002h4.145c.19 0 .345-.154.345-.345v-.69c0-.19-.155-.345-.345-.345H3.882c-1.357 0-2.573-.93-2.89-2.252a3.007 3.007 0 012.108-3.476l.464-.155.097-.484c.598-2.97 3.06-5.346 6.165-5.703a6.74 6.74 0 011.64-.048c3.562.33 6.352 3.252 6.55 6.83l.044.803.803.044c1.523.084 2.756 1.248 2.94 2.756a2.975 2.975 0 01-2.076 3.193c-.11.037-.223.06-.337.073l-.257.017h-3.754c-.19 0-.345.154-.345.345v.69c0 .19.155.345.345.345h3.754a3.652 3.652 0 003.62-3.317c.186-1.992-1.138-3.784-3.07-4.235C19.187 3.236 15.465.032 12.504 0zM8.63 14.384l3.21-3.21c.136-.136.357-.136.494 0l3.21 3.21c.136.136.136.357 0 .494l-.353.353c-.136.136-.357.136-.494 0l-1.967-1.967v6.167c0 .193-.157.35-.35.35h-.5c-.193 0-.35-.157-.35-.35v-6.167l-1.967 1.967c-.136.136-.357.136-.494 0l-.353-.353c-.136-.137-.136-.358-.001-.494z"/></svg>
+                <h3>Linux</h3>
+                <p>.deb (Debian/Ubuntu)</p>
                 <span class="download-link">
                     Download
                     <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
@@ -794,5 +804,41 @@
     </div>
 </footer>
 
+<script>
+(function() {
+    var REPO = 'vaxtly/vaxtly';
+    var FALLBACK = 'https://github.com/' + REPO + '/releases/latest';
+
+    fetch('https://api.github.com/repos/' + REPO + '/releases/latest')
+        .then(function(r) { return r.json(); })
+        .then(function(release) {
+            if (!release || !release.assets) return;
+
+            var assets = {};
+            release.assets.forEach(function(a) {
+                var name = a.name.toLowerCase();
+                if (name.endsWith('.exe') && name.includes('setup')) assets.exe = a.browser_download_url;
+                else if (name.endsWith('.appimage')) assets.appimage = a.browser_download_url;
+                else if (name.endsWith('.deb')) assets.deb = a.browser_download_url;
+            });
+
+            if (assets.exe) document.getElementById('dl-win').href = assets.exe;
+            if (assets.appimage) document.getElementById('dl-appimage').href = assets.appimage;
+            if (assets.deb) document.getElementById('dl-deb').href = assets.deb;
+
+            // Hero button: detect OS and link to the best match
+            var hero = document.getElementById('dl-hero');
+            var ua = navigator.userAgent.toLowerCase();
+            if (ua.indexOf('win') !== -1 && assets.exe) {
+                hero.href = assets.exe;
+            } else if (ua.indexOf('linux') !== -1) {
+                hero.href = assets.appimage || assets.deb || FALLBACK;
+            } else {
+                hero.href = FALLBACK;
+            }
+        })
+        .catch(function() {});
+})();
+</script>
 </body>
 </html>
