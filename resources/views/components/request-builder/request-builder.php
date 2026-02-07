@@ -403,17 +403,20 @@ new class extends Component
                 default => null,
             };
 
-            // Execute request based on method
-            $httpResponse = match (strtoupper($this->method)) {
-                'GET' => $client->get($url, $queryParams),
-                'POST' => $client->post($url, $requestBody),
-                'PUT' => $client->put($url, $requestBody),
-                'PATCH' => $client->patch($url, $requestBody),
-                'DELETE' => $client->delete($url),
-                'HEAD' => $client->head($url),
-                'OPTIONS' => $client->send('OPTIONS', $url),
-                default => throw new \Exception('Unsupported HTTP method'),
-            };
+            // Build request options
+            $options = [];
+
+            if (! empty($queryParams)) {
+                $options['query'] = $queryParams;
+            }
+
+            if ($requestBody !== null) {
+                $bodyFormatKey = $this->bodyType === 'urlencoded' ? 'form_params' : 'json';
+                $options[$bodyFormatKey] = $requestBody;
+            }
+
+            // Execute request
+            $httpResponse = $client->send(strtoupper($this->method), $url, $options);
 
             $end = microtime(true);
             $this->duration = round(($end - $start) * 1000);

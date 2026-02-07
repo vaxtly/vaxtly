@@ -143,16 +143,18 @@ class ScriptExecutionService
             default => null,
         };
 
-        $httpResponse = match (strtoupper($request->method)) {
-            'GET' => $client->get($url, $queryParams),
-            'POST' => $client->post($url, $requestBody),
-            'PUT' => $client->put($url, $requestBody),
-            'PATCH' => $client->patch($url, $requestBody),
-            'DELETE' => $client->delete($url),
-            'HEAD' => $client->head($url),
-            'OPTIONS' => $client->send('OPTIONS', $url),
-            default => throw new \RuntimeException('Unsupported HTTP method: '.$request->method),
-        };
+        $options = [];
+
+        if (! empty($queryParams)) {
+            $options['query'] = $queryParams;
+        }
+
+        if ($requestBody !== null) {
+            $bodyFormatKey = $request->body_type === 'urlencoded' ? 'form_params' : 'json';
+            $options[$bodyFormatKey] = $requestBody;
+        }
+
+        $httpResponse = $client->send(strtoupper($request->method), $url, $options);
 
         return [
             $httpResponse->status(),
