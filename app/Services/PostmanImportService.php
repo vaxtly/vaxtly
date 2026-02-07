@@ -294,7 +294,10 @@ class PostmanImportService
             $data = [];
             foreach ($requestData['data'] as $item) {
                 if (($item['type'] ?? 'text') === 'text') {
-                    $data[$this->stringify($item['key'] ?? '')] = $this->stringify($item['value'] ?? '');
+                    $data[] = [
+                        'key' => $this->stringify($item['key'] ?? ''),
+                        'value' => $this->stringify($item['value'] ?? ''),
+                    ];
                 }
             }
 
@@ -304,10 +307,13 @@ class PostmanImportService
         if ($mode === 'urlencoded' && ! empty($requestData['data'])) {
             $data = [];
             foreach ($requestData['data'] as $item) {
-                $data[$this->stringify($item['key'] ?? '')] = $this->stringify($item['value'] ?? '');
+                $data[] = [
+                    'key' => $this->stringify($item['key'] ?? ''),
+                    'value' => $this->stringify($item['value'] ?? ''),
+                ];
             }
 
-            return http_build_query($data);
+            return json_encode($data);
         }
 
         return null;
@@ -318,7 +324,7 @@ class PostmanImportService
         return match ($dataMode) {
             'raw' => 'json',
             'params' => 'form-data',
-            'urlencoded' => 'form-urlencoded',
+            'urlencoded' => 'urlencoded',
             default => 'none',
         };
     }
@@ -457,7 +463,7 @@ class PostmanImportService
         $queryParams = $this->extractQueryParams($requestData['url'] ?? '');
         $headers = $this->extractHeaders($requestData['header'] ?? []);
         $body = $this->extractBody($requestData['body'] ?? null);
-        $bodyType = $this->mapBodyType($requestData['body']['mode'] ?? 'none');
+        $bodyType = $this->mapBodyType($requestData['body'] ?? []);
 
         Request::create([
             'collection_id' => $collection->id,
@@ -635,11 +641,14 @@ class PostmanImportService
         $data = [];
         foreach ($params as $param) {
             if (! ($param['disabled'] ?? false)) {
-                $data[$this->stringify($param['key'] ?? '')] = $this->stringify($param['value'] ?? '');
+                $data[] = [
+                    'key' => $this->stringify($param['key'] ?? ''),
+                    'value' => $this->stringify($param['value'] ?? ''),
+                ];
             }
         }
 
-        return http_build_query($data);
+        return json_encode($data);
     }
 
     private function buildFormdataBody(array $params): string
@@ -647,18 +656,28 @@ class PostmanImportService
         $data = [];
         foreach ($params as $param) {
             if (! ($param['disabled'] ?? false) && ($param['type'] ?? 'text') === 'text') {
-                $data[$this->stringify($param['key'] ?? '')] = $this->stringify($param['value'] ?? '');
+                $data[] = [
+                    'key' => $this->stringify($param['key'] ?? ''),
+                    'value' => $this->stringify($param['value'] ?? ''),
+                ];
             }
         }
 
         return json_encode($data);
     }
 
-    private function mapBodyType(string $mode): string
+    private function mapBodyType(array $body): string
     {
+        $mode = $body['mode'] ?? 'none';
+
+        if ($mode === 'raw') {
+            $language = $body['options']['raw']['language'] ?? 'json';
+
+            return $language === 'json' ? 'json' : 'raw';
+        }
+
         return match ($mode) {
-            'raw' => 'json',
-            'urlencoded' => 'form-urlencoded',
+            'urlencoded' => 'urlencoded',
             'formdata' => 'form-data',
             'graphql' => 'graphql',
             default => 'none',

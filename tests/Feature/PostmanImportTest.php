@@ -677,6 +677,205 @@ it('stringifies object values in dump format', function () {
     expect($env->variables[0]['value'])->toBe('{"host":"localhost"}');
 });
 
+it('imports urlencoded body as key-value pairs', function () {
+    $postmanData = [
+        'info' => [
+            '_postman_id' => 'test-id',
+            'name' => 'Urlencoded Test',
+            'schema' => 'https://schema.getpostman.com/json/collection/v2.1.0/collection.json',
+        ],
+        'item' => [
+            [
+                'name' => 'Login',
+                'request' => [
+                    'method' => 'POST',
+                    'url' => 'https://api.example.com/login',
+                    'body' => [
+                        'mode' => 'urlencoded',
+                        'urlencoded' => [
+                            ['key' => 'username', 'value' => 'admin'],
+                            ['key' => 'password', 'value' => 'secret'],
+                            ['key' => 'disabled_field', 'value' => 'skip', 'disabled' => true],
+                        ],
+                    ],
+                ],
+            ],
+        ],
+    ];
+
+    $file = createJsonUploadedFile($postmanData);
+    $service = new PostmanImportService;
+    $result = $service->import($file);
+
+    $request = Request::first();
+
+    expect($request->body_type)->toBe('urlencoded');
+
+    $body = json_decode($request->body, true);
+    expect($body)->toBeArray()
+        ->toHaveCount(2)
+        ->and($body[0])->toBe(['key' => 'username', 'value' => 'admin'])
+        ->and($body[1])->toBe(['key' => 'password', 'value' => 'secret']);
+});
+
+it('imports formdata body as key-value pairs', function () {
+    $postmanData = [
+        'info' => [
+            '_postman_id' => 'test-id',
+            'name' => 'Formdata Test',
+            'schema' => 'https://schema.getpostman.com/json/collection/v2.1.0/collection.json',
+        ],
+        'item' => [
+            [
+                'name' => 'Upload',
+                'request' => [
+                    'method' => 'POST',
+                    'url' => 'https://api.example.com/upload',
+                    'body' => [
+                        'mode' => 'formdata',
+                        'formdata' => [
+                            ['key' => 'title', 'value' => 'My File', 'type' => 'text'],
+                            ['key' => 'file', 'src' => '/path/to/file', 'type' => 'file'],
+                        ],
+                    ],
+                ],
+            ],
+        ],
+    ];
+
+    $file = createJsonUploadedFile($postmanData);
+    $service = new PostmanImportService;
+    $result = $service->import($file);
+
+    $request = Request::first();
+
+    expect($request->body_type)->toBe('form-data');
+
+    $body = json_decode($request->body, true);
+    expect($body)->toBeArray()
+        ->toHaveCount(1)
+        ->and($body[0])->toBe(['key' => 'title', 'value' => 'My File']);
+});
+
+it('imports dump format urlencoded body as key-value pairs', function () {
+    $dumpData = [
+        'version' => 1,
+        'collections' => [
+            [
+                'id' => 'col-1',
+                'name' => 'Dump Urlencoded',
+                'variables' => [],
+                'folders' => [],
+                'requests' => [
+                    [
+                        'id' => 'req-1',
+                        'name' => 'Login',
+                        'url' => '{{url}}/login',
+                        'method' => 'POST',
+                        'folder' => null,
+                        'headerData' => [],
+                        'queryParams' => [],
+                        'dataMode' => 'urlencoded',
+                        'data' => [
+                            ['key' => 'email', 'value' => 'test@example.com'],
+                            ['key' => 'password', 'value' => '123456'],
+                        ],
+                    ],
+                ],
+            ],
+        ],
+        'environments' => [],
+    ];
+
+    $file = createJsonUploadedFile($dumpData);
+    $service = new PostmanImportService;
+    $result = $service->import($file);
+
+    $request = Request::first();
+
+    expect($request->body_type)->toBe('urlencoded');
+
+    $body = json_decode($request->body, true);
+    expect($body)->toBeArray()
+        ->toHaveCount(2)
+        ->and($body[0])->toBe(['key' => 'email', 'value' => 'test@example.com'])
+        ->and($body[1])->toBe(['key' => 'password', 'value' => '123456']);
+});
+
+it('maps raw body type based on postman language option', function () {
+    $postmanData = [
+        'info' => [
+            '_postman_id' => 'test-id',
+            'name' => 'Raw Language Test',
+            'schema' => 'https://schema.getpostman.com/json/collection/v2.1.0/collection.json',
+        ],
+        'item' => [
+            [
+                'name' => 'JSON Request',
+                'request' => [
+                    'method' => 'POST',
+                    'url' => 'https://api.example.com/json',
+                    'body' => [
+                        'mode' => 'raw',
+                        'raw' => '{"key": "value"}',
+                        'options' => ['raw' => ['language' => 'json']],
+                    ],
+                ],
+            ],
+            [
+                'name' => 'XML Request',
+                'request' => [
+                    'method' => 'POST',
+                    'url' => 'https://api.example.com/xml',
+                    'body' => [
+                        'mode' => 'raw',
+                        'raw' => '<root><key>value</key></root>',
+                        'options' => ['raw' => ['language' => 'xml']],
+                    ],
+                ],
+            ],
+            [
+                'name' => 'Text Request',
+                'request' => [
+                    'method' => 'POST',
+                    'url' => 'https://api.example.com/text',
+                    'body' => [
+                        'mode' => 'raw',
+                        'raw' => 'plain text body',
+                        'options' => ['raw' => ['language' => 'text']],
+                    ],
+                ],
+            ],
+            [
+                'name' => 'No Language Request',
+                'request' => [
+                    'method' => 'POST',
+                    'url' => 'https://api.example.com/default',
+                    'body' => [
+                        'mode' => 'raw',
+                        'raw' => '{"default": true}',
+                    ],
+                ],
+            ],
+        ],
+    ];
+
+    $file = createJsonUploadedFile($postmanData);
+    $service = new PostmanImportService;
+    $result = $service->import($file);
+
+    $requests = Request::orderBy('id')->get();
+
+    expect($requests[0]->body_type)->toBe('json')
+        ->and($requests[0]->body)->toBe('{"key": "value"}')
+        ->and($requests[1]->body_type)->toBe('raw')
+        ->and($requests[1]->body)->toBe('<root><key>value</key></root>')
+        ->and($requests[2]->body_type)->toBe('raw')
+        ->and($requests[2]->body)->toBe('plain text body')
+        ->and($requests[3]->body_type)->toBe('json')
+        ->and($requests[3]->body)->toBe('{"default": true}');
+});
+
 /**
  * Helper function to create a JSON uploaded file.
  */
