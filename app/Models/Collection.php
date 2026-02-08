@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\EncryptedArray;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -32,7 +33,7 @@ class Collection extends Model
     protected function casts(): array
     {
         return [
-            'variables' => 'array',
+            'variables' => EncryptedArray::class,
             'environment_ids' => 'array',
             'file_shas' => 'array',
             'is_dirty' => 'boolean',

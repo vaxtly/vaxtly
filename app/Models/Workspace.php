@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\EncryptedArray;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -22,7 +23,7 @@ class Workspace extends Model
     protected function casts(): array
     {
         return [
-            'settings' => 'array',
+            'settings' => EncryptedArray::class,
         ];
     }
 

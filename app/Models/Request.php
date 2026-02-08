@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\EncryptedArray;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -35,7 +36,7 @@ class Request extends Model
             'headers' => 'array',
             'query_params' => 'array',
             'scripts' => 'array',
-            'auth' => 'array',
+            'auth' => EncryptedArray::class,
         ];
     }
 

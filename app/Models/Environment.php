@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\EncryptedArray;
 use App\Services\VaultSyncService;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -53,7 +54,7 @@ class Environment extends Model
     protected function casts(): array
     {
         return [
-            'variables' => 'array',
+            'variables' => EncryptedArray::class,
             'is_active' => 'boolean',
             'vault_synced' => 'boolean',
         ];
@@ -143,5 +144,21 @@ class Environment extends Model
     public function deactivate(): void
     {
         $this->update(['is_active' => false]);
+    }
+
+    /**
+     * Ensure vault-synced environments never leak variables in serialization.
+     *
+     * @return array<string, mixed>
+     */
+    public function toArray(): array
+    {
+        $array = parent::toArray();
+
+        if ($this->vault_synced) {
+            $array['variables'] = [];
+        }
+
+        return $array;
     }
 }

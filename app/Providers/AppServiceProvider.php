@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Services\EncryptionService;
 use App\Services\WorkspaceService;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Artisan;
@@ -17,6 +18,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->singleton(EncryptionService::class);
         $this->app->singleton(WorkspaceService::class);
     }
 
