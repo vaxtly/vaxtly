@@ -35,7 +35,7 @@
     {{-- App Info --}}
     <div>
         <p class="text-sm font-medium text-gray-900 dark:text-white">About</p>
-        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">API Tester v1.0</p>
+        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Vaxtly v{{ config('app.version') }}</p>
         <p class="text-xs text-gray-500 dark:text-gray-400">Built with Laravel & Livewire</p>
     </div>
 </div>
