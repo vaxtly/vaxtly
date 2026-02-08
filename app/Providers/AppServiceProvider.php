@@ -36,7 +36,15 @@ class AppServiceProvider extends ServiceProvider
      */
     protected function runMigrations(): void
     {
-        Artisan::call('migrate', ['--force' => true]);
+        if (app()->runningInConsole()) {
+            return;
+        }
+
+        try {
+            Artisan::call('migrate', ['--force' => true]);
+        } catch (\Throwable) {
+            // Silently fail if the database isn't available yet
+        }
     }
 
     protected function configureDefaults(): void
