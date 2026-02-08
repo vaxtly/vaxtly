@@ -37,9 +37,14 @@
         <x-beartropy-ui::input
             wire:model="remoteToken"
             type="password"
-            placeholder="ghp_... or glpat-..."
+            placeholder="{{ $remoteProvider === 'gitlab' ? 'glpat-...' : 'ghp_...' }}"
             sm
         />
+        @if($remoteProvider === 'gitlab')
+            <p class="text-[10px] text-gray-400 dark:text-gray-500 mt-1">Required scope: <span class="font-medium">api</span></p>
+        @elseif($remoteProvider === 'github')
+            <p class="text-[10px] text-gray-400 dark:text-gray-500 mt-1">Required scope: <span class="font-medium">Contents</span> (read & write) for fine-grained tokens, or <span class="font-medium">repo</span> for classic tokens</p>
+        @endif
     </div>
 
     {{-- Branch --}}
