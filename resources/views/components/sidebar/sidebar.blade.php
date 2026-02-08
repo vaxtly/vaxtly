@@ -1,4 +1,9 @@
-<div class="h-full flex flex-col bg-gray-50 dark:bg-gray-950 border-r border-gray-200 dark:border-gray-800">
+<div
+    x-data="{
+        expandedCollections: $wire.entangle('expandedCollections'),
+        expandedFolders: $wire.entangle('expandedFolders'),
+    }"
+    class="h-full flex flex-col bg-gray-50 dark:bg-gray-950 border-r border-gray-200 dark:border-gray-800">
     {{-- Workspace Switcher --}}
     <div class="px-3 pt-3 pb-1">
         @include('components.sidebar.partials.workspace-switcher')

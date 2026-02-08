@@ -126,11 +126,22 @@ new class extends Component
     // Data fetching methods
     public function getCollections()
     {
-        $query = Collection::with([
-            'rootFolders.children.children.requests',
-            'rootFolders.children.requests',
-            'rootFolders.requests',
-            'rootRequests',
+        // Only select columns needed for sidebar display — skip heavy/encrypted
+        // fields like variables, auth, headers, body, scripts, query_params
+        $requestColumns = ['id', 'name', 'method', 'url', 'collection_id', 'folder_id', 'order'];
+        $folderColumns = ['id', 'name', 'collection_id', 'parent_id', 'order', 'environment_ids'];
+
+        $query = Collection::select([
+            'id', 'name', 'order', 'workspace_id', 'sync_enabled', 'is_dirty',
+            'environment_ids', 'default_environment_id', 'created_at',
+        ])->with([
+            'rootFolders' => fn ($q) => $q->select($folderColumns),
+            'rootFolders.children' => fn ($q) => $q->select($folderColumns),
+            'rootFolders.children.children' => fn ($q) => $q->select($folderColumns),
+            'rootFolders.children.children.requests' => fn ($q) => $q->select($requestColumns),
+            'rootFolders.children.requests' => fn ($q) => $q->select($requestColumns),
+            'rootFolders.requests' => fn ($q) => $q->select($requestColumns),
+            'rootRequests' => fn ($q) => $q->select($requestColumns),
         ])->forWorkspace($this->activeWorkspaceId);
 
         return match ($this->sort) {
@@ -502,11 +513,6 @@ new class extends Component
         $this->startEditing($collection->id);
     }
 
-    public function toggleCollection(string $collectionId): void
-    {
-        $this->expandedCollections[$collectionId] = ! ($this->expandedCollections[$collectionId] ?? false);
-    }
-
     public function toggleAllCollections(): void
     {
         $allExpanded = collect($this->filteredCollections)
@@ -520,11 +526,6 @@ new class extends Component
                 $this->expandedCollections[$collection->id] = true;
             }
         }
-    }
-
-    public function toggleFolder(string $folderId): void
-    {
-        $this->expandedFolders[$folderId] = ! ($this->expandedFolders[$folderId] ?? false);
     }
 
     public function createFolder(string $collectionId, ?string $parentId = null): void
