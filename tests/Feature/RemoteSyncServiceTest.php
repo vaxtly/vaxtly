@@ -603,6 +603,122 @@ describe('pushCollection', function () {
             ->toThrow(SyncConflictException::class);
     });
 
+    it('deletes orphaned files when items are moved out of collection', function () {
+        $collection = Collection::factory()->create([
+            'sync_enabled' => true,
+            'remote_sha' => 'old_sha',
+        ]);
+
+        // Create a single request (the collection currently has only this)
+        $request = Request::factory()->create([
+            'collection_id' => $collection->id,
+            'name' => 'Remaining Request',
+            'method' => 'GET',
+            'url' => 'https://example.com',
+        ]);
+
+        // Base state has 2 request files (one was moved away since last sync)
+        $movedRequestPath = "collections/{$collection->id}/moved-request-id.yaml";
+        $collectionYamlPath = "collections/{$collection->id}/_collection.yaml";
+        $remainingRequestPath = "collections/{$collection->id}/{$request->id}.yaml";
+
+        // Serialize to get real content hashes
+        $serializer = new \App\Services\YamlCollectionSerializer;
+        $localFiles = $serializer->serializeToDirectory($collection);
+
+        // Build base state that matches current local for existing files
+        $baseState = [];
+        foreach ($localFiles as $relativePath => $content) {
+            $fullPath = "collections/{$relativePath}";
+            $baseState[$fullPath] = [
+                'content_hash' => hash('sha256', $content),
+                'remote_sha' => sha1('blob '.strlen($content)."\0".$content),
+                'commit_sha' => null,
+            ];
+        }
+        // Add the "moved away" request to base state
+        $baseState[$movedRequestPath] = [
+            'content_hash' => 'old_hash',
+            'remote_sha' => 'old_moved_sha',
+            'commit_sha' => null,
+        ];
+
+        $collection->update(['file_shas' => $baseState]);
+
+        // Remote still has the moved file
+        $remoteItems = [
+            ['type' => 'file', 'path' => $collectionYamlPath, 'sha' => $baseState[$collectionYamlPath]['remote_sha']],
+            ['type' => 'file', 'path' => $remainingRequestPath, 'sha' => $baseState[$remainingRequestPath]['remote_sha']],
+            ['type' => 'file', 'path' => $movedRequestPath, 'sha' => 'old_moved_sha'],
+        ];
+
+        $mockProvider = Mockery::mock(GitProviderInterface::class);
+        $mockProvider->shouldReceive('listDirectoryRecursive')
+            ->once()
+            ->andReturn($remoteItems);
+
+        // Verify commitMultipleFiles receives the delete path
+        $mockProvider->shouldReceive('commitMultipleFiles')
+            ->once()
+            ->withArgs(function ($files, $message, $deletePaths) use ($movedRequestPath) {
+                return in_array($movedRequestPath, $deletePaths);
+            })
+            ->andReturn('new_commit_sha');
+
+        $reflection = new ReflectionProperty(RemoteSyncService::class, 'provider');
+        $reflection->setAccessible(true);
+        $reflection->setValue($this->syncService, $mockProvider);
+
+        $this->syncService->pushCollection($collection);
+
+        $collection->refresh();
+
+        // Orphaned file should be removed from file_shas
+        expect($collection->file_shas)->not->toHaveKey($movedRequestPath)
+            ->and($collection->file_shas)->toHaveKey($remainingRequestPath)
+            ->and($collection->file_shas)->toHaveKey($collectionYamlPath);
+    });
+
+    it('cleans file_shas to only contain current local files', function () {
+        $collection = Collection::factory()->create([
+            'sync_enabled' => true,
+            'file_shas' => [],
+        ]);
+
+        $request = Request::factory()->create([
+            'collection_id' => $collection->id,
+            'name' => 'Test',
+            'method' => 'GET',
+            'url' => 'https://example.com',
+        ]);
+
+        $mockProvider = Mockery::mock(GitProviderInterface::class);
+        $mockProvider->shouldReceive('listDirectoryRecursive')
+            ->once()
+            ->andReturn([]);
+        $mockProvider->shouldReceive('commitMultipleFiles')
+            ->once()
+            ->andReturn('commit_sha');
+
+        $reflection = new ReflectionProperty(RemoteSyncService::class, 'provider');
+        $reflection->setAccessible(true);
+        $reflection->setValue($this->syncService, $mockProvider);
+
+        $this->syncService->pushCollection($collection);
+
+        $collection->refresh();
+
+        // file_shas should only have entries for files that actually exist
+        $serializer = new \App\Services\YamlCollectionSerializer;
+        $localFiles = $serializer->serializeToDirectory($collection);
+        $expectedPaths = array_map(
+            fn ($rel) => "collections/{$rel}",
+            array_keys($localFiles),
+        );
+
+        expect(array_keys($collection->file_shas))->toEqualCanonicalizing($expectedPaths);
+    });
+
     it('stores blob SHA as remote_sha instead of commit SHA', function () {
         $collection = Collection::factory()->create([
             'sync_enabled' => true,

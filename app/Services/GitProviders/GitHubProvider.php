@@ -231,7 +231,7 @@ class GitHubProvider implements GitProviderInterface
      * @param  array<string, string>  $files  Map of path => content
      * @return string The new commit SHA
      */
-    public function commitMultipleFiles(array $files, string $commitMessage): string
+    public function commitMultipleFiles(array $files, string $commitMessage, array $deletePaths = []): string
     {
         // 1. Get the current commit SHA for the branch
         $refResponse = $this->request()
@@ -256,7 +256,17 @@ class GitHubProvider implements GitProviderInterface
             ];
         }
 
-        // 4. Create new tree with all files at once
+        // 4. Add deletion entries (null sha = remove file from tree)
+        foreach ($deletePaths as $path) {
+            $treeEntries[] = [
+                'path' => $path,
+                'mode' => '100644',
+                'type' => 'blob',
+                'sha' => null,
+            ];
+        }
+
+        // 5. Create new tree with all files at once
         $treeResponse = $this->request()
             ->post("{$this->baseUrl}/repos/{$this->repository}/git/trees", [
                 'base_tree' => $baseTreeSha,
@@ -265,7 +275,7 @@ class GitHubProvider implements GitProviderInterface
         $treeResponse->throw();
         $newTreeSha = $treeResponse->json('sha');
 
-        // 5. Create new commit
+        // 6. Create new commit
         $newCommitResponse = $this->request()
             ->post("{$this->baseUrl}/repos/{$this->repository}/git/commits", [
                 'message' => $commitMessage,
@@ -275,7 +285,7 @@ class GitHubProvider implements GitProviderInterface
         $newCommitResponse->throw();
         $newCommitSha = $newCommitResponse->json('sha');
 
-        // 6. Update the branch reference
+        // 7. Update the branch reference
         $updateRefResponse = $this->request()
             ->patch("{$this->baseUrl}/repos/{$this->repository}/git/refs/heads/{$this->branch}", [
                 'sha' => $newCommitSha,
@@ -302,4 +312,3 @@ class GitHubProvider implements GitProviderInterface
         ])->timeout(30);
     }
 }
-

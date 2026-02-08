@@ -11,6 +11,7 @@ use App\Services\SessionLogService;
 use App\Services\VaultSyncService;
 use App\Services\WorkspaceService;
 use App\Traits\HttpColorHelper;
+use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Modelable;
 use Livewire\Attributes\On;
@@ -23,8 +24,8 @@ new class extends Component
     // Mode: 'collections' or 'environments'
     public string $mode = 'collections';
 
-    // Sort: 'a-z', 'z-a', 'oldest', 'newest'
-    public string $sort = 'a-z';
+    // Sort: 'manual', 'a-z', 'z-a', 'oldest', 'newest'
+    public string $sort = 'manual';
 
     // Shared properties
     public string $search = '';
@@ -131,6 +132,7 @@ new class extends Component
         ])->forWorkspace($this->activeWorkspaceId);
 
         return match ($this->sort) {
+            'manual' => $query->orderBy('order')->get(),
             'z-a' => $query->orderByRaw('LOWER(name) DESC')->get(),
             'oldest' => $query->orderBy('created_at', 'asc')->get(),
             'newest' => $query->orderBy('created_at', 'desc')->get(),
@@ -143,6 +145,7 @@ new class extends Component
         $query = Environment::forWorkspace($this->activeWorkspaceId);
 
         return match ($this->sort) {
+            'manual' => $query->orderBy('order')->get(),
             'z-a' => $query->orderByRaw('LOWER(name) DESC')->get(),
             'oldest' => $query->orderBy('created_at', 'asc')->get(),
             'newest' => $query->orderBy('created_at', 'desc')->get(),
@@ -671,6 +674,195 @@ new class extends Component
             $request->delete();
             $collection?->markDirty();
         }
+    }
+
+    // Drag-and-drop reorder methods
+    public function reorderCollections(string $id, int $position): void
+    {
+        if ($this->sort !== 'manual') {
+            return;
+        }
+
+        DB::transaction(function () use ($id, $position) {
+            $siblings = Collection::forWorkspace($this->activeWorkspaceId)
+                ->orderBy('order')
+                ->pluck('id')
+                ->toArray();
+
+            $oldIndex = array_search($id, $siblings);
+            if ($oldIndex === false) {
+                return;
+            }
+
+            array_splice($siblings, $oldIndex, 1);
+            array_splice($siblings, $position, 0, [$id]);
+
+            foreach ($siblings as $index => $siblingId) {
+                Collection::where('id', $siblingId)->update(['order' => $index]);
+            }
+        });
+    }
+
+    public function reorderFolders(string $id, int $position, ?string $containerId = null): void
+    {
+        if ($this->sort !== 'manual') {
+            return;
+        }
+
+        $folder = Folder::find($id);
+        if (! $folder) {
+            return;
+        }
+
+        if ($containerId === null) {
+            $containerId = $folder->parent_id
+                ? "folder:{$folder->parent_id}"
+                : "collection:{$folder->collection_id}";
+        }
+
+        [$containerType, $containerUuid] = explode(':', $containerId, 2);
+
+        if ($containerType === 'collection') {
+            $newCollectionId = $containerUuid;
+            $newParentId = null;
+        } else {
+            $parentFolder = Folder::find($containerUuid);
+            if (! $parentFolder) {
+                return;
+            }
+
+            if ($this->isDescendantOf($containerUuid, $id)) {
+                return;
+            }
+
+            $newCollectionId = $parentFolder->collection_id;
+            $newParentId = $parentFolder->id;
+        }
+
+        $oldCollectionId = $folder->collection_id;
+
+        DB::transaction(function () use ($folder, $position, $newCollectionId, $newParentId, $oldCollectionId) {
+            $folder->update([
+                'collection_id' => $newCollectionId,
+                'parent_id' => $newParentId,
+            ]);
+
+            if ($oldCollectionId !== $newCollectionId) {
+                $this->updateDescendantCollectionIds($folder, $newCollectionId);
+            }
+
+            $siblings = Folder::where('collection_id', $newCollectionId)
+                ->where('parent_id', $newParentId)
+                ->orderBy('order')
+                ->pluck('id')
+                ->toArray();
+
+            $oldIndex = array_search($folder->id, $siblings);
+            if ($oldIndex !== false) {
+                array_splice($siblings, $oldIndex, 1);
+            }
+            array_splice($siblings, $position, 0, [$folder->id]);
+
+            foreach ($siblings as $index => $siblingId) {
+                Folder::where('id', $siblingId)->update(['order' => $index]);
+            }
+
+            Collection::find($newCollectionId)?->markDirty();
+            if ($oldCollectionId !== $newCollectionId) {
+                Collection::find($oldCollectionId)?->markDirty();
+            }
+        });
+
+        $this->dispatch('collections-updated');
+    }
+
+    public function reorderRequests(string $id, int $position, ?string $containerId = null): void
+    {
+        if ($this->sort !== 'manual') {
+            return;
+        }
+
+        $request = Request::find($id);
+        if (! $request) {
+            return;
+        }
+
+        if ($containerId === null) {
+            $containerId = $request->folder_id
+                ? "folder:{$request->folder_id}"
+                : "collection:{$request->collection_id}";
+        }
+
+        [$containerType, $containerUuid] = explode(':', $containerId, 2);
+
+        if ($containerType === 'collection') {
+            $newCollectionId = $containerUuid;
+            $newFolderId = null;
+        } else {
+            $parentFolder = Folder::find($containerUuid);
+            if (! $parentFolder) {
+                return;
+            }
+            $newCollectionId = $parentFolder->collection_id;
+            $newFolderId = $parentFolder->id;
+        }
+
+        $oldCollectionId = $request->collection_id;
+
+        DB::transaction(function () use ($request, $position, $newCollectionId, $newFolderId, $oldCollectionId) {
+            $request->update([
+                'collection_id' => $newCollectionId,
+                'folder_id' => $newFolderId,
+            ]);
+
+            $siblings = Request::where('collection_id', $newCollectionId)
+                ->where('folder_id', $newFolderId)
+                ->orderBy('order')
+                ->pluck('id')
+                ->toArray();
+
+            $oldIndex = array_search($request->id, $siblings);
+            if ($oldIndex !== false) {
+                array_splice($siblings, $oldIndex, 1);
+            }
+            array_splice($siblings, $position, 0, [$request->id]);
+
+            foreach ($siblings as $index => $siblingId) {
+                Request::where('id', $siblingId)->update(['order' => $index]);
+            }
+
+            Collection::find($newCollectionId)?->markDirty();
+            if ($oldCollectionId !== $newCollectionId) {
+                Collection::find($oldCollectionId)?->markDirty();
+            }
+        });
+
+        $this->dispatch('collections-updated');
+    }
+
+    protected function isDescendantOf(string $potentialDescendantId, string $ancestorId): bool
+    {
+        $current = Folder::find($potentialDescendantId);
+
+        while ($current) {
+            if ($current->parent_id === $ancestorId) {
+                return true;
+            }
+            $current = $current->parent;
+        }
+
+        return false;
+    }
+
+    protected function updateDescendantCollectionIds(Folder $folder, string $newCollectionId): void
+    {
+        foreach ($folder->children as $child) {
+            $child->update(['collection_id' => $newCollectionId]);
+            Request::where('folder_id', $child->id)->update(['collection_id' => $newCollectionId]);
+            $this->updateDescendantCollectionIds($child, $newCollectionId);
+        }
+
+        Request::where('folder_id', $folder->id)->update(['collection_id' => $newCollectionId]);
     }
 
     // Environment association modal methods

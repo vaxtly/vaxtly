@@ -51,10 +51,10 @@ interface GitProviderInterface
      * Much faster than individual file operations.
      *
      * @param  array<string, string>  $files  Map of path => content
+     * @param  array<string>  $deletePaths  Paths to delete in the same commit
      * @return string The new commit SHA
      */
-    public function commitMultipleFiles(array $files, string $commitMessage): string;
+    public function commitMultipleFiles(array $files, string $commitMessage, array $deletePaths = []): string;
 
     public function testConnection(): bool;
 }
-

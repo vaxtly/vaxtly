@@ -1,8 +1,14 @@
-<div wire:key="folder-{{ $folder->id }}">
+<div wire:key="folder-{{ $folder->id }}" x-sort:item="'{{ $folder->id }}'">
     {{-- Folder Header --}}
     <div class="group flex items-center justify-between px-2 py-1.5 cursor-pointer hover:bg-gray-200/50 dark:hover:bg-gray-800/50 rounded transition-colors"
          wire:click="toggleFolder('{{ $folder->id }}')">
         <div class="flex items-center gap-1.5 min-w-0 flex-1">
+            <div x-sort:handle class="{{ $isDragEnabled ? '' : 'hidden' }} cursor-grab active:cursor-grabbing p-0.5 -ml-1 text-gray-300 hover:text-gray-500 dark:text-gray-600 dark:hover:text-gray-400 shrink-0" @click.stop>
+                <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M7 2a2 2 0 10.001 4.001A2 2 0 007 2zm0 6a2 2 0 10.001 4.001A2 2 0 007 8zm0 6a2 2 0 10.001 4.001A2 2 0 007 14zm6-8a2 2 0 10-.001-4.001A2 2 0 0013 6zm0 2a2 2 0 10.001 4.001A2 2 0 0013 8zm0 6a2 2 0 10.001 4.001A2 2 0 0013 14z"/>
+                </svg>
+            </div>
+
             <svg class="w-3 h-3 text-gray-400 dark:text-gray-500 transition-transform shrink-0 {{ $expandedFolders[$folder->id] ?? false ? 'rotate-90' : '' }}"
                  fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
@@ -36,6 +42,7 @@
             class="relative transition-opacity"
             :class="menuOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'"
             @click.stop
+
         >
             <button
                 @click="menuOpen = !menuOpen"
@@ -128,24 +135,27 @@
         </div>
     </div>
 
-    {{-- Folder Contents (when expanded) --}}
-    @if($expandedFolders[$folder->id] ?? false)
-        <div class="ml-4">
-            {{-- Child folders (recursive) --}}
+    {{-- Folder Contents (always rendered for drag-and-drop; hidden when collapsed) --}}
+    @php $isFolderExpanded = $expandedFolders[$folder->id] ?? false; @endphp
+    <div class="ml-4 {{ $isFolderExpanded ? '' : 'hidden sort-drop-collapsed' }}">
+        {{-- Child folders container --}}
+        <div wire:key="ffolders-{{ $folder->id }}" x-sort="$wire.reorderFolders($item, $position, 'folder:{{ $folder->id }}')" x-sort:group="folders" class="min-h-[4px]">
             @foreach($folder->children as $child)
-                @include('components.sidebar.partials.folder-item', ['folder' => $child, 'collectionId' => $collectionId])
+                @include('components.sidebar.partials.folder-item', ['folder' => $child, 'collectionId' => $collectionId, 'isDragEnabled' => $isDragEnabled])
             @endforeach
-
-            {{-- Requests in this folder --}}
-            @foreach($folder->requests as $request)
-                @include('components.sidebar.partials.request-item', ['request' => $request])
-            @endforeach
-
-            @if($folder->children->isEmpty() && $folder->requests->isEmpty())
-                <div class="px-2 py-1.5 text-xs text-gray-400 dark:text-gray-500">
-                    Empty folder
-                </div>
-            @endif
         </div>
-    @endif
+
+        {{-- Requests container --}}
+        <div wire:key="frequests-{{ $folder->id }}" x-sort="$wire.reorderRequests($item, $position, 'folder:{{ $folder->id }}')" x-sort:group="requests" class="min-h-[4px]">
+            @foreach($folder->requests as $request)
+                @include('components.sidebar.partials.request-item', ['request' => $request, 'isDragEnabled' => $isDragEnabled])
+            @endforeach
+        </div>
+
+        @if($isFolderExpanded && $folder->children->isEmpty() && $folder->requests->isEmpty())
+            <div class="px-2 py-1.5 text-xs text-gray-400 dark:text-gray-500">
+                Empty folder
+            </div>
+        @endif
+    </div>
 </div>

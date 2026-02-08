@@ -156,6 +156,15 @@
                                 <x-bt-icon name="check" class="w-3.5 h-3.5 ml-auto text-blue-500" />
                             @endif
                         </button>
+                        <button wire:click="$set('sort', 'manual')" @click="open = false" class="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded-md transition-colors {{ $sort === 'manual' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50' }}" role="menuitem">
+                            <svg class="w-3.5 h-3.5 {{ $sort === 'manual' ? 'text-blue-500' : 'text-gray-400' }}" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M7 2a2 2 0 10.001 4.001A2 2 0 007 2zm0 6a2 2 0 10.001 4.001A2 2 0 007 8zm0 6a2 2 0 10.001 4.001A2 2 0 007 14zm6-8a2 2 0 10-.001-4.001A2 2 0 0013 6zm0 2a2 2 0 10.001 4.001A2 2 0 0013 8zm0 6a2 2 0 10.001 4.001A2 2 0 0013 14z"/>
+                            </svg>
+                            <span>Manual Order</span>
+                            @if($sort === 'manual')
+                                <x-bt-icon name="check" class="w-3.5 h-3.5 ml-auto text-blue-500" />
+                            @endif
+                        </button>
                     </div>
                 </div>
             </div>
@@ -260,4 +269,14 @@
 
     @include('components.sidebar.partials.environment-modal')
     @include('components.sidebar.partials.conflict-modal')
+
+    @once
+    <style>
+        /* During drag (SortableJS adds .sorting to body), reveal collapsed containers as drop zones */
+        body.sorting .sort-drop-collapsed {
+            display: block !important;
+            min-height: 8px;
+        }
+    </style>
+    @endonce
 </div>

@@ -218,7 +218,7 @@ class GitLabProvider implements GitProviderInterface
      * @param  array<string, string>  $files  Map of path => content
      * @return string The new commit SHA
      */
-    public function commitMultipleFiles(array $files, string $commitMessage): string
+    public function commitMultipleFiles(array $files, string $commitMessage, array $deletePaths = []): string
     {
         // Build actions array for the commit
         $actions = [];
@@ -230,6 +230,14 @@ class GitLabProvider implements GitProviderInterface
                 'action' => $existingFile ? 'update' : 'create',
                 'file_path' => $path,
                 'content' => $content,
+            ];
+        }
+
+        // Add deletion actions
+        foreach ($deletePaths as $path) {
+            $actions[] = [
+                'action' => 'delete',
+                'file_path' => $path,
             ];
         }
 

@@ -345,22 +345,36 @@ class RemoteSyncService
             throw new SyncConflictException($conflicts);
         }
 
-        \Log::info('[SYNC] conflict check done: '.round((microtime(true) - $startTime) * 1000).'ms, pushing '.count($filesToPush).' files');
+        // Detect orphaned files: exist on remote/baseState but not in local files anymore
+        $localFullPaths = [];
+        foreach ($localFiles as $relativePath => $content) {
+            $localFullPaths[self::COLLECTIONS_PATH.'/'.$relativePath] = true;
+        }
 
-        if (empty($filesToPush)) {
-            \Log::info('[SYNC] No files to push, already in sync');
+        $filesToDelete = [];
+        foreach ($remoteShas as $remotePath => $remoteSha) {
+            if (! isset($localFullPaths[$remotePath])) {
+                $filesToDelete[] = $remotePath;
+            }
+        }
+
+        \Log::info('[SYNC] conflict check done: '.round((microtime(true) - $startTime) * 1000).'ms, pushing '.count($filesToPush).' files, deleting '.count($filesToDelete).' files');
+
+        if (empty($filesToPush) && empty($filesToDelete)) {
+            \Log::info('[SYNC] No files to push or delete, already in sync');
             $collection->update(['is_dirty' => false]);
 
             return;
         }
 
-        // Commit changed files
-        $provider->commitMultipleFiles($filesToPush, "Sync: {$collection->name}");
+        // Commit changed and deleted files in a single atomic commit
+        $provider->commitMultipleFiles($filesToPush, "Sync: {$collection->name}", $filesToDelete);
 
         \Log::info('[SYNC] commitMultipleFiles: '.round((microtime(true) - $startTime) * 1000).'ms');
 
         // Build new file state locally (no API call needed)
-        $newFileState = $baseState;
+        // Start fresh from local files only — don't inherit orphaned entries from baseState
+        $newFileState = [];
 
         foreach ($localFiles as $relativePath => $content) {
             $fullPath = self::COLLECTIONS_PATH.'/'.$relativePath;
@@ -556,8 +570,17 @@ class RemoteSyncService
             $filesWithFullPath[self::COLLECTIONS_PATH.'/'.$relativePath] = $content;
         }
 
-        // Commit all files in a single atomic operation
-        $provider->commitMultipleFiles($filesWithFullPath, "Force sync (keep local): {$collection->name}");
+        // Detect orphaned remote files to delete
+        $remoteItems = $provider->listDirectoryRecursive($basePath);
+        $filesToDelete = [];
+        foreach ($remoteItems as $item) {
+            if ($item['type'] === 'file' && ! isset($filesWithFullPath[$item['path']])) {
+                $filesToDelete[] = $item['path'];
+            }
+        }
+
+        // Commit all files and deletions in a single atomic operation
+        $provider->commitMultipleFiles($filesWithFullPath, "Force sync (keep local): {$collection->name}", $filesToDelete);
 
         // Build file state locally instead of extra API call
         $newFileState = [];
