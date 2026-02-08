@@ -26,7 +26,7 @@
         <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Repository</label>
         <x-beartropy-ui::input
             wire:model="remoteRepository"
-            placeholder="owner/repo-name"
+            placeholder="{{ $remoteProvider === 'gitlab' ? 'group/subgroup/project-name' : 'owner/repo-name' }}"
             sm
         />
     </div>
