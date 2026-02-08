@@ -38,7 +38,13 @@ class NativeAppServiceProvider implements ProvidesPhpIni
     protected function configureMenu(): void
     {
         Menu::create(
-            Menu::app(),
+            Menu::label(config('app.name'))->submenu(
+                Menu::label('About '.config('app.name'))->event(OpenSettingsRequested::class),
+                Menu::separator(),
+                Menu::label('Settings...')->event(OpenSettingsRequested::class)->hotkey('CmdOrCtrl+,'),
+                Menu::separator(),
+                Menu::quit(),
+            ),
             Menu::label('File')->submenu(
                 Menu::label('Settings...')->event(OpenSettingsRequested::class)->hotkey('CmdOrCtrl+,'),
                 Menu::separator(),
@@ -48,7 +54,6 @@ class NativeAppServiceProvider implements ProvidesPhpIni
             Menu::view(),
             Menu::label('Help')->submenu(
                 Menu::label('Help')->event(OpenHelpRequested::class),
-                Menu::link('https://vaxtly.com/docs', 'Documentation')->openInBrowser(),
                 Menu::separator(),
                 Menu::label('Check for Updates...')->event(CheckForUpdatesRequested::class),
             ),
