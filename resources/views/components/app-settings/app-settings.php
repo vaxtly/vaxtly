@@ -6,6 +6,7 @@ use App\Services\PostmanImportService;
 use App\Services\RemoteSyncService;
 use App\Services\VaultSyncService;
 use App\Services\WorkspaceService;
+use Beartropy\Ui\Traits\HasToasts;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Validate;
 use Livewire\Component;
@@ -13,6 +14,7 @@ use Livewire\WithFileUploads;
 
 new class extends Component
 {
+    use HasToasts;
     use WithFileUploads;
 
     public $show = false;
@@ -224,11 +226,18 @@ new class extends Component
 
             $this->dispatch('collections-updated');
             $this->dispatch('environments-updated');
+
+            if (($this->importStatus['type'] ?? '') === 'success') {
+                $this->toast()->success('Import complete', $this->importStatus['message']);
+            } elseif (($this->importStatus['type'] ?? '') === 'warning') {
+                $this->toast()->warning('Import', $this->importStatus['message']);
+            }
         } catch (\Exception $e) {
             $this->importStatus = [
                 'type' => 'error',
                 'message' => 'Import failed: '.$e->getMessage(),
             ];
+            $this->toast()->error('Import failed', $e->getMessage(), 0);
         } finally {
             $this->isImporting = false;
             $this->importFile = null;
@@ -341,9 +350,13 @@ new class extends Component
 
             if ($result->pulled > 0) {
                 $this->dispatch('collections-updated');
+                $this->toast()->success('Pull complete', $result->pulled.' collection(s) pulled');
+            } elseif (empty($result->conflicts) && empty($result->errors)) {
+                $this->toast()->info('Already up to date');
             }
         } catch (\Exception $e) {
             $this->syncResult = ['errors' => [$e->getMessage()]];
+            $this->toast()->error('Pull failed', $e->getMessage(), 0);
         } finally {
             $this->isSyncing = false;
         }
@@ -370,9 +383,13 @@ new class extends Component
 
             if ($result->pushed > 0) {
                 $this->dispatch('collections-updated');
+                $this->toast()->success('Push complete', $result->pushed.' collection(s) pushed');
+            } elseif (empty($result->conflicts) && empty($result->errors)) {
+                $this->toast()->info('Nothing to push');
             }
         } catch (\Exception $e) {
             $this->syncResult = ['errors' => [$e->getMessage()]];
+            $this->toast()->error('Push failed', $e->getMessage(), 0);
         } finally {
             $this->isSyncing = false;
         }
@@ -406,8 +423,10 @@ new class extends Component
             }
 
             $this->dispatch('collections-updated');
+            $this->toast()->success('Conflict resolved', $collection->name);
         } catch (\Exception $e) {
             $this->syncResult = ['errors' => [$e->getMessage()]];
+            $this->toast()->error('Conflict resolution failed', $e->getMessage(), 0);
         }
     }
 
@@ -464,9 +483,13 @@ new class extends Component
 
             if ($result['created'] > 0) {
                 $this->dispatch('environments-updated');
+                $this->toast()->success('Vault pull complete', $result['created'].' environment(s) pulled');
+            } elseif (empty($result['errors'])) {
+                $this->toast()->info('Vault already up to date');
             }
         } catch (\Exception $e) {
             $this->vaultSyncResult = ['created' => 0, 'errors' => [$e->getMessage()]];
+            $this->toast()->error('Vault pull failed', $e->getMessage(), 0);
         } finally {
             $this->isVaultSyncing = false;
         }
@@ -500,9 +523,13 @@ new class extends Component
 
             if ($pushed > 0) {
                 $this->dispatch('environments-updated');
+                $this->toast()->success('Vault push complete', $pushed.' environment(s) pushed');
+            } elseif (empty($errors)) {
+                $this->toast()->info('Nothing to push to Vault');
             }
         } catch (\Exception $e) {
             $this->vaultSyncResult = ['pushed' => 0, 'errors' => [$e->getMessage()]];
+            $this->toast()->error('Vault push failed', $e->getMessage(), 0);
         } finally {
             $this->isVaultSyncing = false;
         }

@@ -11,6 +11,7 @@ use App\Services\SessionLogService;
 use App\Services\VaultSyncService;
 use App\Services\WorkspaceService;
 use App\Traits\HttpColorHelper;
+use Beartropy\Ui\Traits\HasToasts;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Modelable;
@@ -19,6 +20,7 @@ use Livewire\Component;
 
 new class extends Component
 {
+    use HasToasts;
     use HttpColorHelper;
 
     // Mode: 'collections' or 'environments'
@@ -269,6 +271,7 @@ new class extends Component
         $collection->update(['sync_enabled' => true]);
         $collection->syncToRemote();
         $this->dispatch('collections-updated');
+        $this->toast()->success('Sync enabled', $collection->name);
     }
 
     public function disableSync(string $collectionId, bool $deleteRemote = false): void
@@ -313,6 +316,7 @@ new class extends Component
 
             $syncService->pushCollection($collection);
             $this->dispatch('collections-updated');
+            $this->toast()->success('Pushed', $collection->name);
         } catch (\Exception $e) {
             if ($syncService->isShaConflict($e)) {
                 $conflictInfo = $syncService->getConflictInfo($collection);
@@ -323,6 +327,7 @@ new class extends Component
                 $this->showConflictModal = true;
             } else {
                 app(SessionLogService::class)->logGitOperation('push', $collection->name, 'Push failed: '.$e->getMessage(), false);
+                $this->toast()->error('Push failed', $e->getMessage(), 0);
             }
         }
     }
@@ -343,6 +348,7 @@ new class extends Component
 
             if ($syncService->pullSingleCollection($collection)) {
                 $this->dispatch('collections-updated');
+                $this->toast()->success('Pulled', $collection->name);
             }
         } catch (SyncConflictException) {
             $conflictInfo = (new RemoteSyncService)->getConflictInfo($collection);
@@ -353,6 +359,7 @@ new class extends Component
             $this->showConflictModal = true;
         } catch (\Exception $e) {
             app(SessionLogService::class)->logGitOperation('pull', $collection->name, 'Pull failed: '.$e->getMessage(), false);
+            $this->toast()->error('Pull failed', $e->getMessage(), 0);
         }
     }
 
@@ -375,8 +382,10 @@ new class extends Component
             $syncService = new RemoteSyncService;
             $syncService->forceKeepLocal($collection, $this->conflictRemoteSha);
             $this->dispatch('collections-updated');
+            $this->toast()->success('Conflict resolved', 'Kept local version of '.$collection->name);
         } catch (\Exception $e) {
             app(SessionLogService::class)->logGitOperation('push', $collection->name, 'Force push failed: '.$e->getMessage(), false);
+            $this->toast()->error('Conflict resolution failed', $e->getMessage(), 0);
         }
 
         $this->closeConflictModal();
@@ -401,8 +410,10 @@ new class extends Component
             $syncService = new RemoteSyncService;
             $syncService->forceKeepRemote($collection, $this->conflictRemotePath, $this->conflictRemoteSha);
             $this->dispatch('collections-updated');
+            $this->toast()->success('Conflict resolved', 'Pulled remote version of '.$collection->name);
         } catch (\Exception $e) {
             app(SessionLogService::class)->logGitOperation('pull', $collection->name, 'Force pull failed: '.$e->getMessage(), false);
+            $this->toast()->error('Conflict resolution failed', $e->getMessage(), 0);
         }
 
         $this->closeConflictModal();
