@@ -26,7 +26,7 @@
                         wire:keydown.enter="saveFolderEditing"
                         wire:keydown.escape="cancelEditing"
                         x-init="$nextTick(() => { let i = $el.querySelector('input') || $el; i.focus(); i.select?.(); })"
-                        @blur="setTimeout(() => { if (!$el.contains(document.activeElement)) $wire.cancelEditing() }, 150)"
+                        @blur="setTimeout(() => { if (!$el.contains(document.activeElement)) $wire.saveFolderEditing() }, 150)"
                         sm
                         class="w-full h-7 py-0 text-sm"
                     />
