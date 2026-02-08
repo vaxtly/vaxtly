@@ -1,5 +1,5 @@
 {{-- Workspace Switcher --}}
-<div x-data="{ open: false, editing: false }" @click.away="open = false; editing = false" class="relative">
+<div x-data="{ open: false }" @click.away="open = false" class="relative">
     <button
         @click="open = !open"
         type="button"
