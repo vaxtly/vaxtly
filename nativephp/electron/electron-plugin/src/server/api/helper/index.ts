@@ -23,6 +23,9 @@ export function compileMenu (item) {
         } else {
             item.submenu = item.submenu.submenu?.map(compileMenu);
         }
+        item.type = 'submenu';
+        delete item.click;
+        return item;
     }
 
     if (item.type === 'link') {
