@@ -63,9 +63,22 @@ new class extends Component
     }
 
     #[On('open-help-modal')]
-    #[On('native:App\Events\OpenHelpRequested')]
     public function openHelpModal(): void
     {
+        if (config('nativephp-internal.running')) {
+            \Native\Desktop\Facades\Window::open('docs')
+                ->route('docs')
+                ->width(960)
+                ->height(700)
+                ->minWidth(700)
+                ->minHeight(500)
+                ->title('Vaxtly User Guide')
+                ->hideMenu()
+                ->rememberState();
+
+            return;
+        }
+
         $this->showHelpModal = true;
     }
 
