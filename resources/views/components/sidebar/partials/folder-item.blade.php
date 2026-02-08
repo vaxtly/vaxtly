@@ -1,7 +1,9 @@
 <div wire:key="folder-{{ $folder->id }}" x-sort:item="'{{ $folder->id }}'">
     {{-- Folder Header --}}
-    <div class="group flex items-center justify-between px-2 py-1.5 cursor-pointer hover:bg-gray-200/50 dark:hover:bg-gray-800/50 rounded transition-colors"
-         wire:click="toggleFolder('{{ $folder->id }}')">
+    <div x-data="{ menuOpen: false }"
+         class="group flex items-center justify-between px-2 py-1.5 cursor-pointer hover:bg-gray-200/50 dark:hover:bg-gray-800/50 rounded transition-colors"
+         wire:click="toggleFolder('{{ $folder->id }}')"
+         @contextmenu.prevent="menuOpen = true">
         <div class="flex items-center gap-1.5 min-w-0 flex-1">
             <div x-sort:handle class="{{ $isDragEnabled ? '' : 'hidden' }} cursor-grab active:cursor-grabbing p-0.5 -ml-1 text-gray-300 hover:text-gray-500 dark:text-gray-600 dark:hover:text-gray-400 shrink-0" @click.stop>
                 <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
@@ -38,11 +40,9 @@
         </div>
         {{-- 3-dot menu --}}
         <div
-            x-data="{ menuOpen: false }"
             class="relative transition-opacity"
             :class="menuOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'"
             @click.stop
-
         >
             <button
                 @click="menuOpen = !menuOpen"
