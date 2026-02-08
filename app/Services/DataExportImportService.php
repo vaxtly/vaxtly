@@ -163,6 +163,8 @@ class DataExportImportService
                 'parent_id' => $parent?->id,
                 'name' => $folderData['name'] ?? 'Unnamed Folder',
                 'order' => $folderData['order'] ?? $order,
+                'environment_ids' => $folderData['environment_ids'] ?? null,
+                'default_environment_id' => $folderData['default_environment_id'] ?? null,
             ]);
 
             $this->importFolders($folderData['children'] ?? [], $collection, $folder);
@@ -319,12 +321,20 @@ class DataExportImportService
             ->get();
 
         return $folders->map(function (Folder $folder) use ($collection) {
-            return [
+            $data = [
                 'name' => $folder->name,
                 'order' => $folder->order,
                 'children' => $this->buildFoldersTree($collection, $folder->id),
                 'requests' => $this->buildRequestsData($folder->requests()->orderBy('order')->get()),
             ];
+
+            $envIds = $folder->getEnvironmentIds();
+            if (! empty($envIds)) {
+                $data['environment_ids'] = $envIds;
+                $data['default_environment_id'] = $folder->default_environment_id;
+            }
+
+            return $data;
         })->toArray();
     }
 

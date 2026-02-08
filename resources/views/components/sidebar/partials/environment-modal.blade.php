@@ -1,10 +1,14 @@
 {{-- Environment Association Modal --}}
-@if($showEnvironmentModal && $environmentModalCollectionId)
+@if($showEnvironmentModal && $environmentModalTargetId)
     @php
-        $modalCollection = \App\Models\Collection::find($environmentModalCollectionId);
+        $isFolder = $environmentModalTargetType === 'folder';
+        $modalTarget = $isFolder
+            ? \App\Models\Folder::find($environmentModalTargetId)
+            : \App\Models\Collection::find($environmentModalTargetId);
         $allEnvironments = \App\Models\Environment::forWorkspace($this->activeWorkspaceId)->orderByRaw('LOWER(name) ASC')->get();
+        $targetLabel = $isFolder ? 'folder' : 'collection';
     @endphp
-    @if($modalCollection)
+    @if($modalTarget)
         <x-beartropy-ui::modal
             wire:model="showEnvironmentModal"
             styled
@@ -18,9 +22,10 @@
                 x-data="{
                     search: '',
                     environments: @js($allEnvironments->map(fn($e) => ['id' => $e->id, 'name' => $e->name])->values()),
-                    associatedIds: @js($modalCollection->getEnvironmentIds()),
-                    defaultEnvId: @js($modalCollection->default_environment_id),
-                    collectionId: @js($modalCollection->id),
+                    associatedIds: @js($modalTarget->getEnvironmentIds()),
+                    defaultEnvId: @js($modalTarget->default_environment_id),
+                    targetId: @js($modalTarget->id),
+                    targetType: @js($environmentModalTargetType),
                     get filtered() {
                         if (!this.search) return this.environments;
                         const s = this.search.toLowerCase();
@@ -36,7 +41,11 @@
                         } else {
                             this.associatedIds.push(id);
                         }
-                        $wire.toggleCollectionEnvironment(this.collectionId, id);
+                        if (this.targetType === 'folder') {
+                            $wire.toggleFolderEnvironment(this.targetId, id);
+                        } else {
+                            $wire.toggleCollectionEnvironment(this.targetId, id);
+                        }
                     },
                     toggleDefault(id) {
                         if (this.defaultEnvId === id) {
@@ -47,7 +56,11 @@
                                 this.associatedIds.push(id);
                             }
                         }
-                        $wire.setCollectionDefaultEnvironment(this.collectionId, id);
+                        if (this.targetType === 'folder') {
+                            $wire.setFolderDefaultEnvironment(this.targetId, id);
+                        } else {
+                            $wire.setCollectionDefaultEnvironment(this.targetId, id);
+                        }
                     },
                     get defaultEnvName() {
                         if (!this.defaultEnvId) return null;
@@ -58,7 +71,8 @@
                 class="space-y-3"
             >
                 <p class="text-xs text-gray-500 dark:text-gray-400">
-                    Select environments for <span class="font-medium text-gray-700 dark:text-gray-300">{{ $modalCollection->name }}</span>
+                    Select environments for <span class="font-medium text-gray-700 dark:text-gray-300">{{ $modalTarget->name }}</span>
+                    <span class="text-gray-400 dark:text-gray-500">({{ $targetLabel }})</span>
                 </p>
 
                 @if($allEnvironments->isEmpty())

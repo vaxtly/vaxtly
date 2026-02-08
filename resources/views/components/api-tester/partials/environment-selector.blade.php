@@ -2,28 +2,55 @@
     $environments = $this->environments;
     $activeEnvId = $this->activeEnvironmentId;
     $currentCollectionId = $this->currentCollectionId;
+    $currentFolderId = $this->currentFolderId;
     $currentCollection = $currentCollectionId ? $this->collections->firstWhere('id', $currentCollectionId) : null;
-    $associatedIds = $currentCollection ? $currentCollection->getEnvironmentIds() : [];
-    $defaultEnvId = $currentCollection?->default_environment_id;
+
+    // Resolve effective context: folder tree first, then collection
+    $effectiveContext = 'none';
+    $associatedIds = [];
+    $defaultEnvId = null;
+
+    if ($currentFolderId) {
+        $contextFolder = \App\Models\Folder::find($currentFolderId)?->resolveEnvironmentFolder();
+        if ($contextFolder) {
+            $effectiveContext = 'folder';
+            $associatedIds = $contextFolder->getEnvironmentIds();
+            $defaultEnvId = $contextFolder->default_environment_id;
+        }
+    }
+
+    if ($effectiveContext === 'none' && $currentCollection) {
+        $collectionEnvIds = $currentCollection->getEnvironmentIds();
+        if (!empty($collectionEnvIds)) {
+            $effectiveContext = 'collection';
+            $associatedIds = $collectionEnvIds;
+            $defaultEnvId = $currentCollection->default_environment_id;
+        } elseif ($currentCollectionId) {
+            $effectiveContext = 'collection';
+        }
+    }
 @endphp
 
 <div
-    wire:key="env-selector-{{ $activeEnvId }}-{{ $currentCollectionId }}-{{ $environments->count() }}"
+    wire:key="env-selector-{{ $activeEnvId }}-{{ $currentCollectionId }}-{{ $currentFolderId }}-{{ $environments->count() }}"
     x-data="{
         open: false,
         search: '',
+        showAll: false,
         environments: @js($environments->map(fn($e) => ['id' => $e->id, 'name' => $e->name])->values()),
         activeId: @js($activeEnvId),
         associatedIds: @js($associatedIds),
         defaultEnvId: @js($defaultEnvId),
+        effectiveContext: @js($effectiveContext),
         currentCollectionId: @js($currentCollectionId),
+        currentFolderId: @js($currentFolderId),
         get filteredAssociated() {
-            if (!this.currentCollectionId || this.associatedIds.length === 0) return [];
+            if (this.associatedIds.length === 0) return [];
             const s = this.search?.toLowerCase() || '';
             return this.environments.filter(e => this.associatedIds.includes(e.id) && (!s || e.name.toLowerCase().includes(s)));
         },
         get filteredOther() {
-            if (!this.currentCollectionId || this.associatedIds.length === 0) {
+            if (this.associatedIds.length === 0) {
                 if (!this.search) return this.environments;
                 const s = this.search.toLowerCase();
                 return this.environments.filter(e => e.name.toLowerCase().includes(s));
@@ -37,6 +64,9 @@
         get activeName() {
             const env = this.environments.find(e => e.id === this.activeId);
             return env ? env.name : 'No Environment';
+        },
+        get contextLabel() {
+            return this.effectiveContext === 'folder' ? 'Folder' : 'Collection';
         },
         select(id) {
             this.activeId = id;
@@ -157,12 +187,10 @@
                     </svg>
                 </button>
 
-                {{-- Collection-associated environments --}}
-                <template x-if="filteredAssociated.length > 0">
+                {{-- Scenario A: Context has associated envs --}}
+                <template x-if="associatedIds.length > 0">
                     <div>
-                        <div class="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-                            Collection
-                        </div>
+                        <div class="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500" x-text="contextLabel"></div>
                         <template x-for="env in filteredAssociated" :key="'assoc-' + env.id">
                             <button
                                 @click="select(env.id)"
@@ -185,27 +213,99 @@
                             </button>
                         </template>
 
-                        {{-- Divider --}}
-                        <div x-show="filteredOther.length > 0" class="border-t border-gray-100 dark:border-gray-700"></div>
+                        {{-- Show all toggle --}}
+                        <template x-if="filteredOther.length > 0">
+                            <div>
+                                <button
+                                    @click="showAll = !showAll"
+                                    type="button"
+                                    class="w-full px-3 py-1.5 text-[11px] text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer text-left"
+                                >
+                                    <span x-text="showAll ? 'Hide others' : 'Show all environments'"></span>
+                                </button>
+
+                                {{-- Other environments (when expanded) --}}
+                                <template x-if="showAll">
+                                    <div>
+                                        <div class="border-t border-gray-100 dark:border-gray-700"></div>
+                                        <template x-for="env in filteredOther" :key="'other-' + env.id">
+                                            <button
+                                                @click="select(env.id)"
+                                                type="button"
+                                                class="w-full flex items-center gap-3 px-3 py-2 text-sm text-left transition-colors cursor-pointer"
+                                                :class="activeId === env.id
+                                                    ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50'"
+                                            >
+                                                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                                <span class="truncate" x-text="env.name"></span>
+                                                <svg x-show="activeId === env.id" class="w-4 h-4 ml-auto text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                                </svg>
+                                            </button>
+                                        </template>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
                     </div>
                 </template>
 
-                {{-- Other environments --}}
-                <template x-for="env in filteredOther" :key="'other-' + env.id">
-                    <button
-                        @click="select(env.id)"
-                        type="button"
-                        class="w-full flex items-center gap-3 px-3 py-2 text-sm text-left transition-colors cursor-pointer"
-                        :class="activeId === env.id
-                            ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
-                            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50'"
-                    >
-                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-                        <span class="truncate" x-text="env.name"></span>
-                        <svg x-show="activeId === env.id" class="w-4 h-4 ml-auto text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                        </svg>
-                    </button>
+                {{-- Scenario B: Context exists but no envs assigned --}}
+                <template x-if="effectiveContext !== 'none' && associatedIds.length === 0 && currentCollectionId">
+                    <div>
+                        <button
+                            @click="$wire.dispatch('open-env-modal-for-context', { type: currentFolderId ? 'folder' : 'collection', id: currentFolderId || currentCollectionId }); close()"
+                            type="button"
+                            class="w-full flex items-center gap-2 px-3 py-2.5 text-xs text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors cursor-pointer"
+                        >
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                            </svg>
+                            <span x-text="'Add environments to this ' + contextLabel.toLowerCase()"></span>
+                        </button>
+
+                        {{-- Still show all environments --}}
+                        <div class="border-t border-gray-100 dark:border-gray-700"></div>
+                        <template x-for="env in filteredOther" :key="'other-' + env.id">
+                            <button
+                                @click="select(env.id)"
+                                type="button"
+                                class="w-full flex items-center gap-3 px-3 py-2 text-sm text-left transition-colors cursor-pointer"
+                                :class="activeId === env.id
+                                    ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50'"
+                            >
+                                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                <span class="truncate" x-text="env.name"></span>
+                                <svg x-show="activeId === env.id" class="w-4 h-4 ml-auto text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                </svg>
+                            </button>
+                        </template>
+                    </div>
+                </template>
+
+                {{-- Scenario C: No context (no active tab) --}}
+                <template x-if="effectiveContext === 'none' || !currentCollectionId">
+                    <div>
+                        <template x-for="env in filteredOther" :key="'all-' + env.id">
+                            <button
+                                @click="select(env.id)"
+                                type="button"
+                                class="w-full flex items-center gap-3 px-3 py-2 text-sm text-left transition-colors cursor-pointer"
+                                :class="activeId === env.id
+                                    ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50'"
+                            >
+                                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                <span class="truncate" x-text="env.name"></span>
+                                <svg x-show="activeId === env.id" class="w-4 h-4 ml-auto text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                </svg>
+                            </button>
+                        </template>
+                    </div>
                 </template>
 
                 {{-- Empty state --}}

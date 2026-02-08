@@ -108,7 +108,7 @@
 
                     {{-- Set environments --}}
                     <button
-                        @click="menuOpen = false; $wire.openEnvironmentModal('{{ $collection->id }}')"
+                        @click="menuOpen = false; $wire.openEnvironmentModal('{{ $collection->id }}', 'collection')"
                         class="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
                     >
                         <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

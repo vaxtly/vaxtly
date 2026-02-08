@@ -31,4 +31,21 @@ class FolderFactory extends Factory
             'parent_id' => $folder->id,
         ]);
     }
+
+    /**
+     * @param  array<int, string>  $ids
+     */
+    public function withEnvironments(array $ids): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'environment_ids' => $ids,
+        ]);
+    }
+
+    public function withDefaultEnvironment(string $id): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'default_environment_id' => $id,
+        ]);
+    }
 }

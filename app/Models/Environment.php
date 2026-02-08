@@ -22,6 +22,11 @@ class Environment extends Model
                 ->get()
                 ->each(fn (Collection $collection) => $collection->cleanupDeletedEnvironment($environment->id));
 
+            Folder::whereNotNull('environment_ids')
+                ->whereHas('collection', fn ($q) => $q->where('workspace_id', $environment->workspace_id))
+                ->get()
+                ->each(fn (Folder $folder) => $folder->cleanupDeletedEnvironment($environment->id));
+
             if ($environment->vault_synced) {
                 try {
                     $vaultService = new VaultSyncService;

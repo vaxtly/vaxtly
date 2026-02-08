@@ -2,6 +2,7 @@
 
 use App\Models\Collection;
 use App\Models\Environment;
+use App\Models\Folder;
 use App\Models\Request;
 use App\Services\RemoteSyncService;
 use App\Services\WorkspaceService;
@@ -94,6 +95,14 @@ new class extends Component
         $tab = collect($this->openTabs)->firstWhere('id', $this->activeTabId);
 
         return $tab['requestId'] ?? null;
+    }
+
+    #[Computed]
+    public function currentFolderId(): ?string
+    {
+        $tab = collect($this->openTabs)->firstWhere('id', $this->activeTabId);
+
+        return $tab['folderId'] ?? null;
     }
 
     public function toggleViewMode(): void
@@ -224,7 +233,7 @@ new class extends Component
         $existing = collect($this->openTabs)->firstWhere('requestId', $requestId);
         if ($existing) {
             $this->activeTabId = $existing['id'];
-            $this->autoActivateCollectionEnvironment($existing['collectionId'] ?? null);
+            $this->autoActivateEnvironment($existing['collectionId'] ?? null, $existing['folderId'] ?? null);
             $this->dispatch('switch-tab', tabId: $existing['id'], requestId: $requestId);
 
             return;
@@ -241,11 +250,12 @@ new class extends Component
             'id' => $tabId,
             'requestId' => $requestId,
             'collectionId' => $request->collection_id,
+            'folderId' => $request->folder_id,
             'name' => $request->name,
             'method' => $request->method,
         ];
         $this->activeTabId = $tabId;
-        $this->autoActivateCollectionEnvironment($request->collection_id);
+        $this->autoActivateEnvironment($request->collection_id, $request->folder_id);
         $this->dispatch('switch-tab', tabId: $tabId, requestId: $requestId);
     }
 
@@ -254,7 +264,7 @@ new class extends Component
         $tab = collect($this->openTabs)->firstWhere('id', $tabId);
         if ($tab) {
             $this->activeTabId = $tabId;
-            $this->autoActivateCollectionEnvironment($tab['collectionId'] ?? null);
+            $this->autoActivateEnvironment($tab['collectionId'] ?? null, $tab['folderId'] ?? null);
             $this->dispatch('switch-tab', tabId: $tabId, requestId: $tab['requestId']);
         }
     }
@@ -289,22 +299,36 @@ new class extends Component
         }
     }
 
-    public function autoActivateCollectionEnvironment(?string $collectionId): void
+    public function autoActivateEnvironment(?string $collectionId, ?string $folderId = null): void
     {
         if ($this->envLocked || ! $collectionId) {
             return;
         }
 
-        $collection = Collection::find($collectionId);
-        if (! $collection?->default_environment_id) {
+        $defaultEnvironmentId = null;
+
+        // Check folder tree first
+        if ($folderId) {
+            $folder = Folder::find($folderId);
+            $envFolder = $folder?->resolveEnvironmentFolder();
+            if ($envFolder?->default_environment_id) {
+                $defaultEnvironmentId = $envFolder->default_environment_id;
+            }
+        }
+
+        // Fall back to collection default
+        if (! $defaultEnvironmentId) {
+            $collection = Collection::find($collectionId);
+            $defaultEnvironmentId = $collection?->default_environment_id;
+        }
+
+        if (! $defaultEnvironmentId) {
             return;
         }
 
-        $environment = Environment::find($collection->default_environment_id);
+        $environment = Environment::find($defaultEnvironmentId);
         if ($environment) {
             $environment->activate();
-            // Clear the computed property cache immediately so the new active
-            // environment is reflected in the same render cycle
             $this->refreshEnvironments();
             $this->dispatch('active-environment-changed');
         }

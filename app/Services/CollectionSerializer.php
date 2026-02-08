@@ -45,6 +45,8 @@ class CollectionSerializer
             'id' => $folder->id,
             'name' => $folder->name,
             'order' => $folder->order,
+            'environment_ids' => $folder->getEnvironmentIds(),
+            'default_environment_id' => $folder->default_environment_id,
             'children' => $folder->children->map(fn (Folder $child) => $this->serializeFolder($child))->toArray(),
             'requests' => $folder->requests->map(fn (Request $request) => $this->serializeRequest($request))->toArray(),
         ];
@@ -126,12 +128,15 @@ class CollectionSerializer
 
     private function importFolder(array $data, Collection $collection, ?string $parentId): void
     {
+        $folderEnvFields = $this->validateEnvironmentIds($data);
+
         $folder = Folder::create([
             'id' => $data['id'],
             'collection_id' => $collection->id,
             'parent_id' => $parentId,
             'name' => $data['name'],
             'order' => $data['order'] ?? 0,
+            ...$folderEnvFields,
         ]);
 
         foreach ($data['children'] ?? [] as $childData) {

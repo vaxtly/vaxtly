@@ -25,50 +25,106 @@
                 </div>
             @else
                 <span class="text-sm font-base text-gray-700 dark:text-gray-300 truncate">{{ $folder->name }}</span>
+                @if(!empty($folder->getEnvironmentIds()))
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" title="Has environment associations"></span>
+                @endif
             @endif
         </div>
-        <div class="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-            {{-- Rename --}}
+        {{-- 3-dot menu --}}
+        <div
+            x-data="{ menuOpen: false }"
+            class="relative transition-opacity"
+            :class="menuOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'"
+            @click.stop
+        >
             <button
-                wire:click.stop="startFolderEditing('{{ $folder->id }}')"
-                class="p-1 text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors cursor-pointer"
-                title="Rename folder"
+                @click="menuOpen = !menuOpen"
+                class="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer rounded hover:bg-gray-200 dark:hover:bg-gray-700"
+                title="Folder actions"
             >
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"/>
                 </svg>
             </button>
-            {{-- Add subfolder --}}
-            <button
-                wire:click.stop="createFolder('{{ $collectionId }}', '{{ $folder->id }}')"
-                class="p-1 text-gray-400 hover:text-yellow-500 dark:hover:text-yellow-400 transition-colors cursor-pointer"
-                title="Add subfolder"
-            >
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"></path>
-                </svg>
-            </button>
-            {{-- Add request --}}
-            <button
-                wire:click.stop="createRequest('{{ $collectionId }}', '{{ $folder->id }}')"
-                class="p-1 text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors cursor-pointer"
-                title="Add request"
-            >
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                </svg>
-            </button>
-            {{-- Delete --}}
-            <button
-                wire:click.stop="deleteFolder('{{ $folder->id }}')"
-                wire:confirm="Are you sure you want to delete this folder and all its contents?"
-                class="p-1 text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors cursor-pointer"
-                title="Delete folder"
-            >
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                </svg>
-            </button>
+
+            {{-- Dropdown menu --}}
+            <template x-teleport="body">
+                <div
+                    x-show="menuOpen"
+                    x-transition:enter="transition ease-out duration-100"
+                    x-transition:enter-start="opacity-0 scale-95"
+                    x-transition:enter-end="opacity-100 scale-100"
+                    x-transition:leave="transition ease-in duration-75"
+                    x-transition:leave-start="opacity-100 scale-100"
+                    x-transition:leave-end="opacity-0 scale-95"
+                    @click.away="menuOpen = false"
+                    x-anchor.bottom-end.offset.4="$root.querySelector('button')"
+                    class="fixed z-[9999] w-44 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1"
+                >
+                    {{-- Rename --}}
+                    <button
+                        @click="menuOpen = false; $wire.startFolderEditing('{{ $folder->id }}')"
+                        class="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
+                    >
+                        <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
+                        </svg>
+                        Rename
+                    </button>
+
+                    {{-- Add subfolder --}}
+                    <button
+                        @click="menuOpen = false; $wire.createFolder('{{ $collectionId }}', '{{ $folder->id }}')"
+                        class="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
+                    >
+                        <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"></path>
+                        </svg>
+                        Add subfolder
+                    </button>
+
+                    {{-- Add request --}}
+                    <button
+                        @click="menuOpen = false; $wire.createRequest('{{ $collectionId }}', '{{ $folder->id }}')"
+                        class="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
+                    >
+                        <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                        </svg>
+                        Add request
+                    </button>
+
+                    {{-- Divider --}}
+                    <div class="border-t border-gray-100 dark:border-gray-700 my-1"></div>
+
+                    {{-- Set environments --}}
+                    <button
+                        @click="menuOpen = false; $wire.openEnvironmentModal('{{ $folder->id }}', 'folder')"
+                        class="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
+                    >
+                        <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        Set environments
+                    </button>
+
+                    {{-- Divider --}}
+                    <div class="border-t border-gray-100 dark:border-gray-700 my-1"></div>
+
+                    {{-- Delete --}}
+                    <button
+                        @click="menuOpen = false"
+                        wire:click="deleteFolder('{{ $folder->id }}')"
+                        wire:confirm="Are you sure you want to delete this folder and all its contents?"
+                        class="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 cursor-pointer"
+                    >
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                        </svg>
+                        Delete
+                    </button>
+                </div>
+            </template>
         </div>
     </div>
 

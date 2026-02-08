@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Services\WorkspaceService;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\ServiceProvider;
@@ -24,7 +25,18 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        $this->runMigrations();
         $this->configureDefaults();
+    }
+
+    /**
+     * Run pending migrations automatically on boot.
+     * Essential for NativePHP/Electron where users get app updates
+     * but have no way to run artisan commands manually.
+     */
+    protected function runMigrations(): void
+    {
+        Artisan::call('migrate', ['--force' => true]);
     }
 
     protected function configureDefaults(): void

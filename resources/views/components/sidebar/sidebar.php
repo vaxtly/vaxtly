@@ -43,7 +43,9 @@ new class extends Component
     // Environment association modal
     public bool $showEnvironmentModal = false;
 
-    public ?string $environmentModalCollectionId = null;
+    public string $environmentModalTargetType = 'collection';
+
+    public ?string $environmentModalTargetId = null;
 
     // Sync conflict modal
     public bool $showConflictModal = false;
@@ -672,16 +674,24 @@ new class extends Component
     }
 
     // Environment association modal methods
-    public function openEnvironmentModal(string $collectionId): void
+    public function openEnvironmentModal(string $targetId, string $type = 'collection'): void
     {
-        $this->environmentModalCollectionId = $collectionId;
+        $this->environmentModalTargetType = $type;
+        $this->environmentModalTargetId = $targetId;
         $this->showEnvironmentModal = true;
     }
 
     public function closeEnvironmentModal(): void
     {
         $this->showEnvironmentModal = false;
-        $this->environmentModalCollectionId = null;
+        $this->environmentModalTargetType = 'collection';
+        $this->environmentModalTargetId = null;
+    }
+
+    #[On('open-env-modal-for-context')]
+    public function openEnvModalForContext(string $type, string $id): void
+    {
+        $this->openEnvironmentModal($id, $type);
     }
 
     public function toggleCollectionEnvironment(string $collectionId, string $environmentId): void
@@ -710,6 +720,34 @@ new class extends Component
         $currentDefault = $collection->default_environment_id;
         $collection->setDefaultEnvironment($currentDefault === $environmentId ? null : $environmentId);
         $collection->markDirty();
+    }
+
+    public function toggleFolderEnvironment(string $folderId, string $environmentId): void
+    {
+        $folder = Folder::find($folderId);
+        if (! $folder) {
+            return;
+        }
+
+        if ($folder->hasEnvironment($environmentId)) {
+            $folder->removeEnvironment($environmentId);
+        } else {
+            $folder->addEnvironment($environmentId);
+        }
+
+        $folder->collection?->markDirty();
+    }
+
+    public function setFolderDefaultEnvironment(string $folderId, ?string $environmentId): void
+    {
+        $folder = Folder::find($folderId);
+        if (! $folder) {
+            return;
+        }
+
+        $currentDefault = $folder->default_environment_id;
+        $folder->setDefaultEnvironment($currentDefault === $environmentId ? null : $environmentId);
+        $folder->collection?->markDirty();
     }
 
     // Environments-specific methods

@@ -75,10 +75,16 @@ class YamlCollectionSerializer
         $folderPath = $parentPath.'/'.$folder->id;
 
         // Folder metadata
-        $files[$folderPath.'/'.self::FOLDER_FILE] = $this->toYaml([
+        $folderMeta = [
             'id' => $folder->id,
             'name' => $folder->name,
-        ]);
+        ];
+        $folderEnvIds = $folder->getEnvironmentIds();
+        if (! empty($folderEnvIds)) {
+            $folderMeta['environment_ids'] = $folderEnvIds;
+            $folderMeta['default_environment_id'] = $folder->default_environment_id;
+        }
+        $files[$folderPath.'/'.self::FOLDER_FILE] = $this->toYaml($folderMeta);
 
         // Folder manifest
         $manifest = $this->buildManifest($folder->children, $folder->requests);
@@ -277,6 +283,7 @@ class YamlCollectionSerializer
         }
 
         $folderData = Yaml::parse($filesByPath[$folderFilePath]);
+        $folderEnvFields = $this->validateEnvironmentIds($folderData);
 
         $folder = Folder::create([
             'id' => $folderData['id'],
@@ -284,6 +291,7 @@ class YamlCollectionSerializer
             'parent_id' => $parentId,
             'name' => $folderData['name'],
             'order' => $order,
+            ...$folderEnvFields,
         ]);
 
         // Parse folder manifest
