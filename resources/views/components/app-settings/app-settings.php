@@ -21,6 +21,8 @@ new class extends Component
 
     public $layout;
 
+    public int $timeout = 30;
+
     public string $activeTab = 'general';
 
     #[Validate('required|file|mimes:json,zip|max:10240')]
@@ -88,6 +90,7 @@ new class extends Component
     public function mount(): void
     {
         $this->layout = get_setting('requests.layout', 'columns');
+        $this->timeout = (int) get_setting('requests.timeout', 30);
         $this->loadRemoteSettings();
         $this->loadVaultSettings();
     }
@@ -120,6 +123,12 @@ new class extends Component
     {
         set_setting('requests.layout', $value);
         $this->dispatch('layout-updated', layout: $value);
+    }
+
+    public function updatedTimeout($value): void
+    {
+        $this->timeout = max(1, min(300, (int) $value));
+        set_setting('requests.timeout', $this->timeout);
     }
 
     #[On('open-settings')]

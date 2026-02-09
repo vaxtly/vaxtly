@@ -3,7 +3,7 @@
     class="{{ $layout === 'columns' ? 'pt-3 px-3 flex flex-col min-h-0 overflow-hidden h-full' : 'flex-1 flex flex-col min-h-0 overflow-hidden' }}"
     @if($layout === 'columns') :style="'width: ' + (100 - leftWidth) + '%'" @endif
 >
-    <div wire:loading wire:target="sendRequest" class="w-full h-full">
+    <div x-show="isSending" x-cloak class="w-full h-full">
         <div
             class="h-full flex flex-col items-center justify-center text-center"
             x-data="{
@@ -30,10 +30,17 @@
             <p class="mt-4 text-gray-600 dark:text-gray-400 font-medium">
                 Waiting for response <span class="font-mono text-blue-600 dark:text-blue-400" x-text="elapsed"></span>s
             </p>
+            <button
+                type="button"
+                x-on:click="cancelHttpRequest()"
+                class="mt-4 px-4 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors cursor-pointer"
+            >
+                Cancel
+            </button>
         </div>
     </div>
 
-    <div wire:loading.remove wire:target="sendRequest" class="h-full">
+    <div x-show="!isSending" class="h-full">
         <div x-show="$wire.response !== null || $wire.error" x-cloak class="{{ $layout === 'rows' ? 'border-t border-gray-200 dark:border-gray-700 pt-6 px-6 pb-6 h-full flex flex-col' : 'h-full flex flex-col' }}">
 
             {{-- Error --}}

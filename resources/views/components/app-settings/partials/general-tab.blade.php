@@ -32,6 +32,23 @@
     {{-- Divider --}}
     <div class="border-t border-gray-200 dark:border-gray-700"></div>
 
+    {{-- Request Timeout --}}
+    <div class="flex items-center justify-between">
+        <div>
+            <p class="text-sm font-medium text-gray-900 dark:text-white">Request Timeout</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Maximum time to wait for a response (1-300 seconds)</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <div class="w-20">
+                <x-beartropy-ui::input type="number" wire:model.live.debounce.500ms="timeout" min="1" max="300" sm />
+            </div>
+            <span class="text-xs text-gray-500 dark:text-gray-400">seconds</span>
+        </div>
+    </div>
+
+    {{-- Divider --}}
+    <div class="border-t border-gray-200 dark:border-gray-700"></div>
+
     {{-- App Info --}}
     <div>
         <p class="text-sm font-medium text-gray-900 dark:text-white">About</p>

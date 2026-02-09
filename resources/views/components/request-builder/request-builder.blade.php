@@ -1,4 +1,67 @@
-<div class="flex-1 min-h-0 h-full flex flex-col overflow-hidden">
+<div
+    class="flex-1 min-h-0 h-full flex flex-col overflow-hidden"
+    x-data="{
+        isSending: false,
+        abortController: null,
+        async sendHttpRequest() {
+            if (this.isSending) return;
+            this.isSending = true;
+
+            let config;
+            try {
+                config = await $wire.prepareRequest();
+            } catch (e) {
+                this.isSending = false;
+                return;
+            }
+
+            if (!config) {
+                this.isSending = false;
+                return;
+            }
+
+            this.abortController = new AbortController();
+            const startTime = Date.now();
+
+            try {
+                const response = await fetch('{{ route('internal.proxy-request') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'text/plain',
+                    },
+                    body: JSON.stringify(config),
+                    signal: this.abortController.signal,
+                });
+
+                const text = await response.text();
+                const duration = Math.round(Date.now() - startTime);
+                const data = JSON.parse(text.trim());
+
+                if (data.error) {
+                    await $wire.setRequestError(data.error);
+                } else {
+                    await $wire.processResponse(data.status, data.body, data.headers, duration);
+                }
+            } catch (e) {
+                if (e.name !== 'AbortError') {
+                    await $wire.setRequestError(e.message);
+                }
+            } finally {
+                this.isSending = false;
+                this.abortController = null;
+            }
+        },
+        cancelHttpRequest() {
+            if (this.abortController) {
+                this.abortController.abort();
+                this.abortController = null;
+            }
+            this.isSending = false;
+        }
+    }"
+>
 
     @include('components.request-builder.partials.url-bar')
 

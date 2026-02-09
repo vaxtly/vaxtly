@@ -7,7 +7,6 @@ use App\Services\ScriptExecutionService;
 use App\Services\SensitiveDataScanner;
 use App\Services\VariableSubstitutionService;
 use App\Traits\HttpColorHelper;
-use Illuminate\Support\Facades\Http;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Renderless;
 use Livewire\Component;
@@ -328,14 +327,11 @@ new class extends Component
         }
     }
 
-    public function sendRequest(): void
+    public function prepareRequest(): ?array
     {
-        $this->isLoading = true;
         $this->resetResponse();
 
         try {
-            $start = microtime(true);
-
             // Initialize variable substitution service
             $substitutionService = app(VariableSubstitutionService::class);
             $collectionId = $this->selectedCollectionId;
@@ -396,14 +392,6 @@ new class extends Component
                     break;
             }
 
-            // Create HTTP client
-            $client = Http::withHeaders($headers)->timeout(30);
-
-            // For x-www-form-urlencoded, use asForm()
-            if ($this->bodyType === 'urlencoded') {
-                $client = $client->asForm();
-            }
-
             // Build request body based on type with variable substitution
             $formBodyData = collect($this->formData)
                 ->filter(fn ($f) => ! empty($f['key']))
@@ -415,7 +403,6 @@ new class extends Component
                 })
                 ->toArray();
 
-            // Substitute variables in body
             $bodyWithVars = $substitutionService->substitute($this->body, $collectionId);
 
             $requestBody = match ($this->bodyType) {
@@ -425,7 +412,7 @@ new class extends Component
                 default => null,
             };
 
-            // Build request options
+            // Build Guzzle-compatible options
             $options = [];
 
             if (! empty($queryParams)) {
@@ -437,46 +424,60 @@ new class extends Component
                 $options[$bodyFormatKey] = $requestBody;
             }
 
-            // Execute request
-            $httpResponse = $client->send(strtoupper($this->method), $url, $options);
-
-            $end = microtime(true);
-            $this->duration = round(($end - $start) * 1000);
-
-            $this->statusCode = $httpResponse->status();
-            $this->response = $httpResponse->body();
-            $this->responseHeaders = $httpResponse->headers();
-
-            // Save to history if request is saved
-            if ($this->requestId) {
-                RequestHistory::create([
-                    'request_id' => $this->requestId,
-                    'method' => $this->method,
-                    'url' => $this->url,
-                    'status_code' => $this->statusCode,
-                    'response_body' => $this->response,
-                    'response_headers' => $this->responseHeaders,
-                    'duration_ms' => $this->duration,
-                    'executed_at' => now(),
-                ]);
-
-                $this->dispatch('request-executed');
-
-                // Post-response scripts
-                if (! empty($request = Request::find($this->requestId)) && ! empty($request->getPostResponseScripts())) {
-                    try {
-                        $scriptService = app(ScriptExecutionService::class);
-                        $scriptService->executePostResponseScripts($request, $this->statusCode, $this->response, $this->responseHeaders);
-                    } catch (\Exception) {
-                        // Non-blocking: post-response script errors don't fail the request
-                    }
-                }
-            }
+            return [
+                'method' => strtoupper($this->method),
+                'url' => $url,
+                'headers' => $headers,
+                'timeout' => (int) get_setting('requests.timeout', 30),
+                'options' => $options,
+            ];
         } catch (\Exception $e) {
             $this->error = $e->getMessage();
-        } finally {
-            $this->isLoading = false;
+
+            return null;
         }
+    }
+
+    public function processResponse(int $statusCode, string $body, array $headers, int $duration): void
+    {
+        $this->statusCode = $statusCode;
+        $this->response = $body;
+        $this->responseHeaders = $headers;
+        $this->duration = $duration;
+        $this->isLoading = false;
+
+        // Save to history if request is saved
+        if ($this->requestId) {
+            RequestHistory::create([
+                'request_id' => $this->requestId,
+                'method' => $this->method,
+                'url' => $this->url,
+                'status_code' => $this->statusCode,
+                'response_body' => $this->response,
+                'response_headers' => $this->responseHeaders,
+                'duration_ms' => $this->duration,
+                'executed_at' => now(),
+            ]);
+
+            $this->dispatch('request-executed');
+
+            // Post-response scripts
+            $request = Request::find($this->requestId);
+            if (! empty($request) && ! empty($request->getPostResponseScripts())) {
+                try {
+                    $scriptService = app(ScriptExecutionService::class);
+                    $scriptService->executePostResponseScripts($request, $this->statusCode, $this->response, $this->responseHeaders);
+                } catch (\Exception) {
+                    // Non-blocking: post-response script errors don't fail the request
+                }
+            }
+        }
+    }
+
+    public function setRequestError(string $message): void
+    {
+        $this->error = $message;
+        $this->isLoading = false;
     }
 
     public function saveRequest(): void
