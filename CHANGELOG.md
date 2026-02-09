@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.9] - 2026-02-09
+
+### Fixed
+- Eliminated ~3s tab switching delay by removing all DOM morphing from tab lifecycle (renderless methods + Alpine-driven tab bar)
+- Decoupled sidebar from api-tester request batches by replacing wire:model with event-based communication
+- Response data now persists when switching between tabs
+
 ## [0.1.8] - 2026-02-08
 
 ### Fixed
