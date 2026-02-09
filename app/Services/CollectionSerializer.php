@@ -169,6 +169,8 @@ class CollectionSerializer
 
     /**
      * Validate environment IDs from remote data, discarding any that don't exist locally.
+     * Falls back to vault_path hints to resolve IDs for vault-synced environments
+     * that were created on a different machine.
      *
      * @return array{environment_ids: array<int, string>|null, default_environment_id: string|null}
      */
@@ -184,11 +186,49 @@ class CollectionSerializer
             ];
         }
 
+        // First pass: direct UUID lookup
         $existingIds = Environment::whereIn('id', $remoteIds)->pluck('id')->all();
+        $unmatchedIds = array_diff($remoteIds, $existingIds);
+
+        // Second pass: resolve unmatched IDs via vault_path hints
+        $idMapping = [];
+        $hints = $data['environment_hints'] ?? [];
+
+        if (! empty($unmatchedIds) && ! empty($hints)) {
+            $hintPaths = [];
+            foreach ($unmatchedIds as $remoteId) {
+                if (isset($hints[$remoteId]['vault_path'])) {
+                    $hintPaths[$hints[$remoteId]['vault_path']] = $remoteId;
+                }
+            }
+
+            if (! empty($hintPaths)) {
+                $workspaceId = app(WorkspaceService::class)->activeId();
+                $localVaultEnvs = Environment::where('workspace_id', $workspaceId)
+                    ->where('vault_synced', true)
+                    ->get();
+
+                foreach ($localVaultEnvs as $localEnv) {
+                    $vaultPath = $localEnv->getVaultPath();
+                    if (isset($hintPaths[$vaultPath])) {
+                        $remoteId = $hintPaths[$vaultPath];
+                        $idMapping[$remoteId] = $localEnv->id;
+                        $existingIds[] = $localEnv->id;
+                        unset($hintPaths[$vaultPath]);
+                    }
+                }
+            }
+        }
+
+        // Resolve default_environment_id through the mapping
+        $resolvedDefaultId = $defaultId;
+        if ($defaultId && isset($idMapping[$defaultId])) {
+            $resolvedDefaultId = $idMapping[$defaultId];
+        }
 
         return [
             'environment_ids' => $existingIds ?: null,
-            'default_environment_id' => in_array($defaultId, $existingIds) ? $defaultId : null,
+            'default_environment_id' => in_array($resolvedDefaultId, $existingIds) ? $resolvedDefaultId : null,
         ];
     }
 }

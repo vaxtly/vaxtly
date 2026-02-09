@@ -253,3 +253,75 @@ it('uses factory withDefaultEnvironment state', function () {
 
     expect($folder->default_environment_id)->toBe('env-1');
 });
+
+it('includes environment_hints for vault-synced environments in folder YAML serialization', function () {
+    $workspace = Workspace::factory()->create();
+    $vaultEnv = Environment::factory()->vaultSynced('staging-api')->create(['workspace_id' => $workspace->id]);
+    $collection = Collection::factory()->create(['workspace_id' => $workspace->id]);
+    Folder::factory()->create([
+        'collection_id' => $collection->id,
+        'parent_id' => null,
+        'environment_ids' => [$vaultEnv->id],
+        'default_environment_id' => $vaultEnv->id,
+    ]);
+
+    $serializer = new \App\Services\YamlCollectionSerializer;
+    $files = $serializer->serializeToDirectory($collection);
+
+    $folderFile = collect($files)->filter(fn ($content, $path) => str_ends_with($path, '_folder.yaml'))->first();
+    $folderYaml = \Symfony\Component\Yaml\Yaml::parse($folderFile);
+
+    expect($folderYaml)->toHaveKey('environment_hints')
+        ->and($folderYaml['environment_hints'][$vaultEnv->id])->toBe(['vault_path' => 'staging-api']);
+});
+
+it('resolves folder vault-synced environment ids by vault_path on YAML import', function () {
+    $workspace = Workspace::factory()->create();
+    set_setting('active.workspace', $workspace->id);
+    app(\App\Services\WorkspaceService::class)->clearCache();
+
+    $localEnv = Environment::factory()->vaultSynced('production-api')->create(['workspace_id' => $workspace->id]);
+    $remoteEnvUuid = (string) \Illuminate\Support\Str::uuid();
+    $collectionId = (string) \Illuminate\Support\Str::uuid();
+    $folderId = (string) \Illuminate\Support\Str::uuid();
+
+    $collectionYaml = \Symfony\Component\Yaml\Yaml::dump([
+        'id' => $collectionId,
+        'name' => 'Test Collection',
+        'description' => null,
+        'variables' => [],
+        'environment_ids' => [],
+        'default_environment_id' => null,
+    ]);
+
+    $folderYaml = \Symfony\Component\Yaml\Yaml::dump([
+        'id' => $folderId,
+        'name' => 'Folder',
+        'environment_ids' => [$remoteEnvUuid],
+        'default_environment_id' => $remoteEnvUuid,
+        'environment_hints' => [
+            $remoteEnvUuid => ['vault_path' => 'production-api'],
+        ],
+    ]);
+
+    $manifestYaml = \Symfony\Component\Yaml\Yaml::dump([
+        'items' => [['type' => 'folder', 'id' => $folderId]],
+    ]);
+
+    $folderManifestYaml = \Symfony\Component\Yaml\Yaml::dump(['items' => []]);
+
+    $files = [
+        new \App\DataTransferObjects\FileContent("{$collectionId}/_collection.yaml", $collectionYaml),
+        new \App\DataTransferObjects\FileContent("{$collectionId}/_manifest.yaml", $manifestYaml),
+        new \App\DataTransferObjects\FileContent("{$collectionId}/{$folderId}/_folder.yaml", $folderYaml),
+        new \App\DataTransferObjects\FileContent("{$collectionId}/{$folderId}/_manifest.yaml", $folderManifestYaml),
+    ];
+
+    $serializer = new \App\Services\YamlCollectionSerializer;
+    $collection = $serializer->importFromDirectory($files);
+
+    $folder = $collection->folders()->first();
+
+    expect($folder->getEnvironmentIds())->toBe([$localEnv->id])
+        ->and($folder->default_environment_id)->toBe($localEnv->id);
+});
