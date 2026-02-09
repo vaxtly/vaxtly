@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.8] - 2026-02-08
+
+### Fixed
+- Tab switching performance: collapsed two sequential HTTP round-trips into one batched Livewire request
+- Eliminated redundant full-collection model loads in request builder (replaced with lightweight name lookup)
+- Cached scripts-tab DB query to avoid per-render hits
+
 ## [0.1.7] - 2026-02-08
 
 ### Added
