@@ -6,7 +6,7 @@
         {{-- Collection Header --}}
         <div x-data="{ menuOpen: false }"
              class="group flex items-center justify-between px-2 py-1.5 cursor-pointer hover:bg-gray-200/50 dark:hover:bg-gray-800/50 rounded transition-colors"
-             @click="expandedCollections['{{ $collection->id }}'] = !expandedCollections['{{ $collection->id }}']"
+             @click="expandedCollections['{{ $collection->id }}'] = !expandedCollections['{{ $collection->id }}']; $wire.persistExpandedState()"
              @contextmenu.prevent="$dispatch('close-sidebar-menus'); menuOpen = true"
              @close-sidebar-menus.window="menuOpen = false">
             <div class="flex items-center gap-1.5 min-w-0 flex-1">
@@ -16,7 +16,7 @@
                     </svg>
                 </div>
 
-                <svg class="w-3 h-3 text-gray-400 dark:text-gray-500 transition-transform shrink-0"
+                <svg class="w-3 h-3 text-gray-400 dark:text-gray-500 transition-transform shrink-0 {{ ($expandedCollections[$collection->id] ?? false) ? 'rotate-90' : '' }}"
                      :class="{ 'rotate-90': expandedCollections['{{ $collection->id }}'] }"
                      fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
@@ -229,7 +229,7 @@
         </div>
 
         {{-- Collection Contents (always rendered for drag-and-drop; hidden when collapsed) --}}
-        <div class="ml-4" :class="{ 'hidden sort-drop-collapsed': !expandedCollections['{{ $collection->id }}'] }">
+        <div class="ml-4 {{ !($expandedCollections[$collection->id] ?? false) ? 'hidden sort-drop-collapsed' : '' }}" :class="{ 'hidden sort-drop-collapsed': !expandedCollections['{{ $collection->id }}'] }">
             {{-- Folders container --}}
             <div wire:key="cfolders-{{ $collection->id }}" x-sort="$wire.reorderFolders($item, $position, 'collection:{{ $collection->id }}')" x-sort:group="folders" class="min-h-[4px]">
                 @foreach($collection->rootFolders as $folder)

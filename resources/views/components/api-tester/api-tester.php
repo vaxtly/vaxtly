@@ -38,7 +38,44 @@ new class extends Component
     {
         $this->activeWorkspaceId = app(WorkspaceService::class)->activeId();
         $this->loadCollections();
+        $this->restoreTabs();
         $this->autoSyncOnStart();
+    }
+
+    private function restoreTabs(): void
+    {
+        $ws = app(WorkspaceService::class);
+        $savedTabs = $ws->getSetting('ui.open_tabs', []);
+        $savedActiveId = $ws->getSetting('ui.active_tab_id');
+
+        if (empty($savedTabs)) {
+            return;
+        }
+
+        // Validate that referenced requests still exist
+        $requestIds = collect($savedTabs)->pluck('requestId')->all();
+        $existingIds = Request::whereIn('id', $requestIds)->pluck('id')->all();
+
+        $this->openTabs = collect($savedTabs)
+            ->filter(fn ($tab) => in_array($tab['requestId'], $existingIds))
+            ->values()
+            ->all();
+
+        if (empty($this->openTabs)) {
+            return;
+        }
+
+        // Restore active tab (or fall back to first)
+        if ($savedActiveId && collect($this->openTabs)->firstWhere('id', $savedActiveId)) {
+            $this->activeTabId = $savedActiveId;
+        } else {
+            $this->activeTabId = $this->openTabs[0]['id'];
+        }
+
+        // Dispatch switch-tab so request-builder loads the active request
+        $tab = collect($this->openTabs)->firstWhere('id', $this->activeTabId);
+        $this->autoActivateEnvironment($tab['collectionId'] ?? null, $tab['folderId'] ?? null);
+        $this->dispatch('switch-tab', tabId: $this->activeTabId, requestId: $tab['requestId']);
     }
 
     private function autoSyncOnStart(): void
@@ -61,6 +98,18 @@ new class extends Component
         } catch (\Exception) {
             // Silently fail on auto-sync
         }
+    }
+
+    public function dehydrate(): void
+    {
+        $this->saveTabState();
+    }
+
+    private function saveTabState(): void
+    {
+        $ws = app(WorkspaceService::class);
+        $ws->setSetting('ui.open_tabs', $this->openTabs);
+        $ws->setSetting('ui.active_tab_id', $this->activeTabId);
     }
 
     #[On('open-help-modal')]

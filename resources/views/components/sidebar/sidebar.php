@@ -95,10 +95,30 @@ new class extends Component
         $this->updateSortForMode();
 
         if ($this->mode === 'collections') {
-            foreach ($this->getCollections() as $collection) {
-                $this->expandedCollections[$collection->id] = true;
+            $ws = app(WorkspaceService::class);
+            $savedCollections = $ws->getSetting('ui.expanded_collections', []);
+
+            if (! empty($savedCollections)) {
+                $this->expandedCollections = array_fill_keys($savedCollections, true);
+            } else {
+                foreach ($this->getCollections() as $collection) {
+                    $this->expandedCollections[$collection->id] = true;
+                }
             }
+
+            $this->expandedFolders = array_fill_keys(
+                $ws->getSetting('ui.expanded_folders', []),
+                true
+            );
         }
+    }
+
+    #[Renderless]
+    public function persistExpandedState(): void
+    {
+        $ws = app(WorkspaceService::class);
+        $ws->setSetting('ui.expanded_collections', array_keys(array_filter($this->expandedCollections)));
+        $ws->setSetting('ui.expanded_folders', array_keys(array_filter($this->expandedFolders)));
     }
 
     public function switchMode(string $mode): void
@@ -597,6 +617,8 @@ new class extends Component
                 $this->expandedCollections[$collection->id] = true;
             }
         }
+
+        $this->persistExpandedState();
     }
 
     public function createFolder(string $collectionId, ?string $parentId = null): void
@@ -1129,16 +1151,26 @@ new class extends Component
 
         app(WorkspaceService::class)->switchTo($workspaceId);
         $this->activeWorkspaceId = $workspaceId;
-        $this->expandedCollections = [];
-        $this->expandedFolders = [];
         $this->search = '';
         $this->selectedEnvironmentId = null;
         $this->showWorkspaceDropdown = false;
 
-        // Deactivate environments in old workspace, handled by scoping
-        // Load fresh collections and expand them
-        foreach ($this->getCollections() as $collection) {
-            $this->expandedCollections[$collection->id] = true;
+        // Load saved expanded state for the new workspace, or expand all
+        $ws = app(WorkspaceService::class);
+        $savedCollections = $ws->getSetting('ui.expanded_collections', []);
+
+        if (! empty($savedCollections)) {
+            $this->expandedCollections = array_fill_keys($savedCollections, true);
+            $this->expandedFolders = array_fill_keys(
+                $ws->getSetting('ui.expanded_folders', []),
+                true
+            );
+        } else {
+            $this->expandedCollections = [];
+            $this->expandedFolders = [];
+            foreach ($this->getCollections() as $collection) {
+                $this->expandedCollections[$collection->id] = true;
+            }
         }
 
         unset($this->workspaces, $this->activeWorkspace, $this->filteredCollections, $this->filteredEnvironments, $this->items);
