@@ -9,8 +9,9 @@
             x-data="{
                 start: 0,
                 elapsed: '0.00',
+                intervalId: null,
                 init() {
-                    setInterval(() => {
+                    this.intervalId = setInterval(() => {
                         if (this.$el.offsetParent !== null) {
                             if (this.start === 0) this.start = Date.now();
                             this.elapsed = ((Date.now() - this.start) / 1000).toFixed(2);
@@ -19,6 +20,9 @@
                             this.elapsed = '0.00';
                         }
                     }, 50);
+                },
+                destroy() {
+                    clearInterval(this.intervalId);
                 }
             }"
         >
@@ -30,8 +34,7 @@
     </div>
 
     <div wire:loading.remove wire:target="sendRequest" class="h-full">
-        @if($response !== null || $error)
-        <div class="{{ $layout === 'rows' ? 'border-t border-gray-200 dark:border-gray-700 pt-6 px-6 pb-6 h-full flex flex-col' : 'h-full flex flex-col' }}">
+        <div x-show="$wire.response !== null || $wire.error" x-cloak class="{{ $layout === 'rows' ? 'border-t border-gray-200 dark:border-gray-700 pt-6 px-6 pb-6 h-full flex flex-col' : 'h-full flex flex-col' }}">
 
             {{-- Error --}}
             @if($error)
@@ -92,7 +95,7 @@
 
                         {{-- Tab Content --}}
                         <div x-show="activeTab === 'body'" x-cloak class="flex-1 min-h-0 flex flex-col h-full pb-4">
-                            <div class="h-full" wire:key="response-json-{{ $requestId ?? 'new' }}">
+                            <div class="h-full" wire:key="response-json">
                                 <x-json-editor wire:model="response" readonly class="max-h-full" />
                             </div>
                         </div>
@@ -159,8 +162,8 @@
                 </div>
             @endif
         </div>
-    @elseif($layout === 'columns')
-        <div class="flex items-center justify-center h-full text-gray-400 dark:text-gray-500">
+        @if($layout === 'columns')
+        <div x-show="$wire.response === null && !$wire.error" class="flex items-center justify-center h-full text-gray-400 dark:text-gray-500">
             <p class="text-sm">Response will appear here</p>
         </div>
         @endif

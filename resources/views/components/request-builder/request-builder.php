@@ -9,6 +9,7 @@ use App\Services\VariableSubstitutionService;
 use App\Traits\HttpColorHelper;
 use Illuminate\Support\Facades\Http;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Renderless;
 use Livewire\Component;
 
 new class extends Component
@@ -105,6 +106,7 @@ new class extends Component
     }
 
     #[On('switch-tab')]
+    #[Renderless]
     public function switchTab(string $tabId, string $requestId): void
     {
         // Save current tab state
@@ -117,12 +119,11 @@ new class extends Component
         // Check if we have cached state for this tab
         if (isset($this->tabStates[$tabId])) {
             $this->restoreState($this->tabStates[$tabId]);
+            $this->refreshCollectionRequests();
         } else {
-            // Load fresh from database
+            // Load fresh from database (loadRequest already calls refreshCollectionRequests)
             $this->loadRequest($requestId);
         }
-
-        $this->refreshCollectionRequests();
     }
 
     #[On('close-tab')]
@@ -154,10 +155,6 @@ new class extends Component
             'folderName' => $this->folderName,
             'preRequestScripts' => $this->preRequestScripts,
             'postResponseScripts' => $this->postResponseScripts,
-            'response' => $this->response,
-            'statusCode' => $this->statusCode,
-            'duration' => $this->duration,
-            'responseHeaders' => $this->responseHeaders,
         ];
     }
 
@@ -166,11 +163,13 @@ new class extends Component
         foreach ($state as $key => $value) {
             $this->$key = $value;
         }
+
+        $this->resetResponse();
     }
 
     public function loadRequest(string $requestId): void
     {
-        $request = Request::with('folder')->find($requestId);
+        $request = Request::with(['folder', 'collection:id,name'])->find($requestId);
 
         if (! $request) {
             return;
@@ -192,7 +191,7 @@ new class extends Component
         }
 
         $this->selectedCollectionId = $request->collection_id;
-        $this->collectionName = Collection::where('id', $request->collection_id)->value('name') ?? '';
+        $this->collectionName = $request->collection?->name ?? '';
         $this->refreshCollectionRequests();
 
         // Load scripts into UI format
@@ -263,11 +262,13 @@ new class extends Component
         ], array_keys($data), $data);
     }
 
+    #[Renderless]
     public function addHeader(): void
     {
         $this->headers[] = ['key' => '', 'value' => ''];
     }
 
+    #[Renderless]
     public function removeHeader(int $index): void
     {
         unset($this->headers[$index]);
@@ -278,11 +279,13 @@ new class extends Component
         }
     }
 
+    #[Renderless]
     public function addQueryParam(): void
     {
         $this->queryParams[] = ['key' => '', 'value' => ''];
     }
 
+    #[Renderless]
     public function removeQueryParam(int $index): void
     {
         unset($this->queryParams[$index]);
@@ -293,11 +296,13 @@ new class extends Component
         }
     }
 
+    #[Renderless]
     public function addFormDataField(): void
     {
         $this->formData[] = ['key' => '', 'value' => ''];
     }
 
+    #[Renderless]
     public function removeFormDataField(int $index): void
     {
         unset($this->formData[$index]);
@@ -627,22 +632,26 @@ new class extends Component
         ]);
     }
 
+    #[Renderless]
     public function addPreRequestScript(): void
     {
         $this->preRequestScripts[] = ['request_id' => ''];
     }
 
+    #[Renderless]
     public function removePreRequestScript(int $index): void
     {
         unset($this->preRequestScripts[$index]);
         $this->preRequestScripts = array_values($this->preRequestScripts);
     }
 
+    #[Renderless]
     public function addPostResponseScript(): void
     {
         $this->postResponseScripts[] = ['source_type' => 'body', 'source_path' => '', 'target' => ''];
     }
 
+    #[Renderless]
     public function removePostResponseScript(int $index): void
     {
         unset($this->postResponseScripts[$index]);

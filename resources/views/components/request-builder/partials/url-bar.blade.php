@@ -3,17 +3,19 @@
     {{-- Breadcrumb Navigation --}}
     <div class="flex items-center justify-between">
         <div class="flex items-center text-sm text-gray-600 dark:text-gray-300">
-            <span class="text-gray-500 dark:text-gray-400">{{ $collectionName ?: 'No Collection' }}</span>
-            @if($folderName)
-                <svg class="w-4 h-4 mx-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                </svg>
-                <span class="text-gray-500 dark:text-gray-400">{{ $folderName }}</span>
-            @endif
+            <span class="text-gray-500 dark:text-gray-400" x-text="$wire.collectionName || 'No Collection'"></span>
+            <template x-if="$wire.folderName">
+                <span class="contents">
+                    <svg class="w-4 h-4 mx-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                    </svg>
+                    <span class="text-gray-500 dark:text-gray-400" x-text="$wire.folderName"></span>
+                </span>
+            </template>
             <svg class="w-4 h-4 mx-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
             </svg>
-            <span class="font-medium text-gray-900 dark:text-white">{{ $name ?: 'Untitled Request' }}</span>
+            <span class="font-medium text-gray-900 dark:text-white" x-text="$wire.name || 'Untitled Request'"></span>
         </div>
         <div class="flex items-center gap-1.5">
             <x-bt-button tint emerald sm wire:click="saveRequest">
@@ -40,20 +42,18 @@
     >
         {{-- Method Selector --}}
         <div
-            wire:key="method-selector-{{ $activeTabId }}"
+            wire:key="method-selector"
             x-data="{
                 open: false,
                 search: '',
                 methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'],
-                activeMethod: '{{ $method }}',
                 get filteredMethods() {
                     if (!this.search) return this.methods;
                     return this.methods.filter(m => m.toLowerCase().includes(this.search.toLowerCase()));
                 },
                 select(method) {
-                    this.activeMethod = method;
-                    this.close();
                     $wire.set('method', method);
+                    this.close();
                 },
                 close() {
                     this.open = false;
@@ -85,7 +85,7 @@
                 class="h-10 flex items-center gap-2 px-3 text-sm font-medium transition-colors cursor-pointer w-28 text-left rounded-l-lg
                        focus:outline-none bg-transparent hover:bg-gray-50 dark:hover:bg-gray-700/50"
             >
-                <span class="truncate flex-1 font-mono font-bold" :class="getMethodColor(activeMethod)" x-text="activeMethod"></span>
+                <span class="truncate flex-1 font-mono font-bold" :class="getMethodColor($wire.method)" x-text="$wire.method"></span>
                 <svg
                     class="w-4 h-4 text-gray-400 shrink-0 transition-transform duration-200"
                     :class="{ 'rotate-180': open }"
@@ -114,12 +114,12 @@
                                 @click="select(method)"
                                 type="button"
                                 class="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-mono font-medium text-left transition-colors cursor-pointer"
-                                :class="activeMethod === method
+                                :class="$wire.method === method
                                     ? 'bg-blue-50 dark:bg-blue-900/30'
                                     : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'"
                             >
                                 <span class="flex-1" :class="getMethodColor(method)" x-text="method"></span>
-                                <svg x-show="activeMethod === method" class="w-3 h-3 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg x-show="$wire.method === method" class="w-3 h-3 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                                 </svg>
                             </button>

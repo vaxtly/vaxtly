@@ -1,4 +1,5 @@
 import { EditorView, basicSetup } from "codemirror"
+import { lineNumbers, highlightSpecialChars, drawSelection } from "@codemirror/view"
 import { json } from "@codemirror/lang-json"
 import { Compartment, EditorState } from "@codemirror/state"
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language"
@@ -81,6 +82,35 @@ window.setupJsonEditor = (element, content, onChange, isDark, isReadOnly = false
                 EditorState.readOnly.of(readOnly),
                 readOnly ? EditorView.editable.of(false) : []
             ])
+        });
+    }
+
+    return view;
+}
+
+window.setupJsonViewer = (element, content, onChange, isDark) => {
+    const view = new EditorView({
+        doc: content,
+        extensions: [
+            lineNumbers(),
+            highlightSpecialChars(),
+            drawSelection(),
+            json(),
+            EditorView.lineWrapping,
+            themeCompartment.of(isDark ? vaxtlyDark : vaxtlyLight),
+            syntaxCompartment.of(syntaxHighlighting(isDark ? darkHighlight : lightHighlight)),
+            EditorState.readOnly.of(true),
+            EditorView.editable.of(false),
+        ],
+        parent: element,
+    });
+
+    view.updateTheme = (isDark) => {
+        view.dispatch({
+            effects: [
+                themeCompartment.reconfigure(isDark ? vaxtlyDark : vaxtlyLight),
+                syntaxCompartment.reconfigure(syntaxHighlighting(isDark ? darkHighlight : lightHighlight))
+            ]
         });
     }
 

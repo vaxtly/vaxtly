@@ -15,8 +15,8 @@ use App\Traits\HttpColorHelper;
 use Beartropy\Ui\Traits\HasToasts;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Computed;
-use Livewire\Attributes\Modelable;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Renderless;
 use Livewire\Component;
 
 new class extends Component
@@ -72,7 +72,6 @@ new class extends Component
     public array $sensitiveDataFindings = [];
 
     // Environments-specific
-    #[Modelable]
     public ?string $selectedEnvironmentId = null;
 
     // Workspace properties
@@ -696,6 +695,7 @@ new class extends Component
         $this->cancelEditing();
     }
 
+    #[Renderless]
     public function selectRequest(string $requestId): void
     {
         $this->dispatch('open-request-tab', requestId: $requestId);

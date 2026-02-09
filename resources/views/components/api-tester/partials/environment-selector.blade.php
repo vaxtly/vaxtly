@@ -85,6 +85,7 @@
         }
     }"
     @keydown.escape.window="close()"
+    x-on:env-activated.window="activeId = $event.detail.envId"
     class="relative"
 >
     <div class="flex items-center gap-1">

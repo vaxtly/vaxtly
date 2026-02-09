@@ -15,21 +15,30 @@
                 initialContent = this.autoFormat(initialContent);
             }
 
-            this.editor = window.setupJsonEditor(
-                this.$refs.editorContainer, 
-                initialContent, 
-                (value) => { 
-                    this.content = value;
-                    this.validate();
-                },
-                document.documentElement.classList.contains('dark'),
-                this.isReadOnly
-            );
+            const isDark = document.documentElement.classList.contains('dark');
+            if (this.isReadOnly) {
+                this.editor = window.setupJsonViewer(
+                    this.$refs.editorContainer,
+                    initialContent,
+                    null,
+                    isDark
+                );
+            } else {
+                this.editor = window.setupJsonEditor(
+                    this.$refs.editorContainer,
+                    initialContent,
+                    (value) => {
+                        this.content = value;
+                        this.validate();
+                    },
+                    isDark
+                );
+            }
 
-            const observer = new MutationObserver(() => {
+            this.observer = new MutationObserver(() => {
                 this.editor.updateTheme(document.documentElement.classList.contains('dark'));
             });
-            observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+            this.observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
 
             this.$watch('content', value => {
                 // Formateo automático al vuelo SOLO para readonly
@@ -78,6 +87,13 @@
             await navigator.clipboard.writeText(this.content);
             this.copied = true;
             setTimeout(() => { this.copied = false; }, 2000);
+        },
+
+        destroy() {
+            this.observer?.disconnect();
+            this.editor?.destroy();
+            this.observer = null;
+            this.editor = null;
         }
     }"
     {{ $attributes->merge(['class' => 'flex flex-col space-y-2']) }}

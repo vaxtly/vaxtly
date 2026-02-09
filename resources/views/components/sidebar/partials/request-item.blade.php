@@ -1,6 +1,6 @@
 <div
     wire:key="request-{{ $request->id }}"
-    wire:click="selectRequest('{{ $request->id }}')"
+    @click="Livewire.dispatch('open-request-tab', { requestId: '{{ $request->id }}' })"
     x-sort:item="'{{ $request->id }}'"
     class="group flex items-center gap-2 px-2 py-1.5 cursor-pointer hover:bg-gray-200/50 dark:hover:bg-gray-800/50 rounded transition-colors"
 >

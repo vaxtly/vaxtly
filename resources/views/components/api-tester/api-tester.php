@@ -9,6 +9,7 @@ use App\Services\WorkspaceService;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Renderless;
 use Livewire\Component;
 
 new class extends Component
@@ -147,8 +148,13 @@ new class extends Component
         $this->loadCollections();
     }
 
+    #[On('environment-selected')]
+    public function onEnvironmentSelected(string $environmentId): void
+    {
+        $this->selectedEnvironmentId = $environmentId;
+    }
+
     #[On('environments-updated')]
-    #[On('active-environment-changed')]
     public function refreshEnvironments(): void
     {
         unset($this->environments, $this->activeEnvironmentId);
@@ -240,6 +246,7 @@ new class extends Component
     }
 
     #[On('open-request-tab')]
+    #[Renderless]
     public function openTab(string $requestId): void
     {
         // Check if already open
@@ -273,8 +280,15 @@ new class extends Component
     }
 
     #[On('switch-tab')]
+    #[Renderless]
     public function onSwitchTab(string $tabId, string $requestId): void
     {
+        // openTab() already set activeTabId and called autoActivateEnvironment,
+        // skip redundant work when it dispatched switch-tab in the same request.
+        if ($this->activeTabId === $tabId) {
+            return;
+        }
+
         $tab = collect($this->openTabs)->firstWhere('id', $tabId);
         if ($tab) {
             $this->activeTabId = $tabId;
@@ -282,6 +296,7 @@ new class extends Component
         }
     }
 
+    #[Renderless]
     public function closeTab(string $tabId): void
     {
         $index = collect($this->openTabs)->search(fn ($t) => $t['id'] === $tabId);
@@ -301,6 +316,7 @@ new class extends Component
     }
 
     #[On('tab-name-updated')]
+    #[Renderless]
     public function updateTabName(string $requestId, string $name, string $method): void
     {
         foreach ($this->openTabs as &$tab) {
@@ -342,8 +358,8 @@ new class extends Component
         $environment = Environment::find($defaultEnvironmentId);
         if ($environment) {
             $environment->activate();
-            $this->refreshEnvironments();
-            $this->dispatch('active-environment-changed');
+            unset($this->environments, $this->activeEnvironmentId);
+            $this->dispatch('env-activated', envId: $defaultEnvironmentId);
         }
     }
 
