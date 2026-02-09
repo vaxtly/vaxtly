@@ -79,6 +79,8 @@ new class extends Component
 
     public string $vaultMount = 'secret';
 
+    public bool $vaultVerifySsl = true;
+
     public string $vaultStatus = '';
 
     public bool $isVaultTesting = false;
@@ -117,6 +119,7 @@ new class extends Component
         $this->vaultNamespace = $ws->getSetting('vault.namespace', '') ?? '';
         // Mount contains full engine path (e.g., 'secret/myapp')
         $this->vaultMount = $ws->getSetting('vault.mount', 'secret') ?? 'secret';
+        $this->vaultVerifySsl = $ws->getSetting('vault.verify_ssl', true);
     }
 
     public function updatedLayout($value): void
@@ -452,6 +455,7 @@ new class extends Component
         $ws->setSetting('vault.namespace', $this->vaultNamespace);
         // Mount contains full engine path (e.g., 'secret/myapp')
         $ws->setSetting('vault.mount', $this->vaultMount ?: 'secret');
+        $ws->setSetting('vault.verify_ssl', $this->vaultVerifySsl);
 
         $this->vaultStatus = 'Settings saved.';
     }

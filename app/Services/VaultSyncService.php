@@ -42,6 +42,8 @@ class VaultSyncService
             return null;
         }
 
+        $verifySsl = $ws->getSetting('vault.verify_ssl', true);
+
         $this->provider = match ($providerType) {
             SecretsProvider::HashiCorpVault->value => new HashiCorpVaultProvider(
                 url: rtrim($url, '/'),
@@ -51,6 +53,7 @@ class VaultSyncService
                 authMethod: $authMethod,
                 roleId: $roleId,
                 secretId: $secretId,
+                verifySsl: $verifySsl,
             ),
             default => null,
         };

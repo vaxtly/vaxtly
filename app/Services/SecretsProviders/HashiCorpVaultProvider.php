@@ -24,6 +24,7 @@ class HashiCorpVaultProvider implements SecretsProviderInterface
         private string $authMethod = 'token',
         private ?string $roleId = null,
         private ?string $secretId = null,
+        private bool $verifySsl = true,
     ) {
         $this->authNamespace = $namespace;
         $this->token = $authMethod === 'approle'
@@ -46,13 +47,14 @@ class HashiCorpVaultProvider implements SecretsProviderInterface
 
         if ($response->status() === 404) {
             app(SessionLogService::class)->logVaultOperation('list', $basePath ?? '/', 'No secrets found');
+
             return [];
         }
 
         $response->throw();
 
         $keys = $response->json('data.keys', []);
-        app(SessionLogService::class)->logVaultOperation('list', $basePath ?? '/', 'Listed ' . count($keys) . ' secret(s)');
+        app(SessionLogService::class)->logVaultOperation('list', $basePath ?? '/', 'Listed '.count($keys).' secret(s)');
 
         return $keys;
     }
@@ -67,13 +69,14 @@ class HashiCorpVaultProvider implements SecretsProviderInterface
 
         if ($response->status() === 404) {
             app(SessionLogService::class)->logVaultOperation('get', $path, 'Secret not found', false);
+
             return null;
         }
 
         $response->throw();
 
         $data = $response->json('data.data');
-        app(SessionLogService::class)->logVaultOperation('get', $path, 'Retrieved ' . count($data ?? []) . ' key(s)');
+        app(SessionLogService::class)->logVaultOperation('get', $path, 'Retrieved '.count($data ?? []).' key(s)');
 
         return $data;
     }
@@ -90,7 +93,7 @@ class HashiCorpVaultProvider implements SecretsProviderInterface
 
         $response->throw();
 
-        app(SessionLogService::class)->logVaultOperation('put', $path, 'Saved ' . count($data) . ' key(s)');
+        app(SessionLogService::class)->logVaultOperation('put', $path, 'Saved '.count($data).' key(s)');
     }
 
     public function deleteSecrets(string $path): void
@@ -120,6 +123,10 @@ class HashiCorpVaultProvider implements SecretsProviderInterface
         // For AppRole, test the login endpoint with namespace if configured
         $request = Http::timeout(30);
 
+        if (! $this->verifySsl) {
+            $request = $request->withoutVerifying();
+        }
+
         if ($this->authNamespace) {
             $request = $request->withHeaders([
                 'X-Vault-Namespace' => $this->authNamespace,
@@ -137,6 +144,10 @@ class HashiCorpVaultProvider implements SecretsProviderInterface
     private function loginWithAppRole(): string
     {
         $request = Http::timeout(30);
+
+        if (! $this->verifySsl) {
+            $request = $request->withoutVerifying();
+        }
 
         // Only add namespace header for authentication if configured
         if ($this->authNamespace) {
@@ -163,8 +174,14 @@ class HashiCorpVaultProvider implements SecretsProviderInterface
      */
     private function request(): \Illuminate\Http\Client\PendingRequest
     {
-        return Http::withHeaders([
+        $request = Http::withHeaders([
             'X-Vault-Token' => $this->token,
         ])->timeout(30);
+
+        if (! $this->verifySsl) {
+            $request = $request->withoutVerifying();
+        }
+
+        return $request;
     }
 }

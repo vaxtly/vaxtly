@@ -100,6 +100,15 @@
         <p class="text-[10px] text-gray-400 dark:text-gray-500 mt-1">Full path to KV engine. Secrets stored at: {engine_path}/data/{environment_name}</p>
     </div>
 
+    {{-- Verify SSL --}}
+    <div class="flex items-center justify-between">
+        <div>
+            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300">Verify SSL</label>
+            <p class="text-[10px] text-gray-400 dark:text-gray-500">Disable for self-signed certificates</p>
+        </div>
+        <x-beartropy-ui::toggle wire:model.live="vaultVerifySsl" sm />
+    </div>
+
     {{-- Divider --}}
     <div class="border-t border-gray-200 dark:border-gray-700"></div>
 
