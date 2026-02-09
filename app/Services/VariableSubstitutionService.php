@@ -23,7 +23,7 @@ class VariableSubstitutionService
         $variables = $this->getResolvedVariables($collectionId);
 
         return preg_replace_callback(
-            '/\{\{(\w+)\}\}/',
+            '/\{\{([\w\-\.]+)\}\}/',
             function ($matches) use ($variables) {
                 $variableName = $matches[1];
 
