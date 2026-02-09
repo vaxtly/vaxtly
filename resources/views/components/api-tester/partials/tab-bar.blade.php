@@ -16,6 +16,7 @@
             <div
                 wire:key="tab-{{ $tab['id'] }}"
                 wire:click="switchTab('{{ $tab['id'] }}')"
+                @auxclick.prevent="if ($event.button === 1) $wire.closeTab('{{ $tab['id'] }}')"
                 class="group relative flex items-center gap-2 px-3 py-2 text-xs font-medium cursor-pointer transition-all rounded-t-lg select-none mr-1 min-w-30 max-w-50 border-t border-l border-r
                 {{ $isActive 
                     ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-200 dark:border-gray-700 shadow-sm z-10 -mb-px pb-2.5' 
