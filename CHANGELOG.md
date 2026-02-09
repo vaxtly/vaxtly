@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.12] - 2026-02-09
+
 ### Added
 - Welcome modal on first launch highlighting key features (environments, git sync, vault, workspaces)
 - Welcome Guide button (sparkles icon) in tab bar to revisit the modal
