@@ -30,6 +30,8 @@ new class extends Component
 
     public bool $showHelpModal = false;
 
+    public bool $showWelcomeModal = false;
+
     public bool $envLocked = false;
 
     public string $activeWorkspaceId = '';
@@ -40,6 +42,11 @@ new class extends Component
         $this->loadCollections();
         $this->restoreTabs();
         $this->autoSyncOnStart();
+
+        if (! get_setting('app.welcome_shown', false)) {
+            $this->showWelcomeModal = true;
+            set_setting('app.welcome_shown', true);
+        }
     }
 
     private function restoreTabs(): void
@@ -110,6 +117,13 @@ new class extends Component
         $ws = app(WorkspaceService::class);
         $ws->setSetting('ui.open_tabs', $this->openTabs);
         $ws->setSetting('ui.active_tab_id', $this->activeTabId);
+    }
+
+    #[On('open-welcome-modal')]
+    #[On('native:'.\App\Events\OpenWelcomeRequested::class)]
+    public function openWelcomeModal(): void
+    {
+        $this->showWelcomeModal = true;
     }
 
     #[On('open-help-modal')]

@@ -37,4 +37,7 @@
 
     {{-- Help Modal --}}
     @include('components.api-tester.partials.help-modal')
+
+    {{-- Welcome Modal --}}
+    @include('components.api-tester.partials.welcome-modal')
 </div>

@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Events\CheckForUpdatesRequested;
 use App\Events\OpenHelpRequested;
 use App\Events\OpenSettingsRequested;
+use App\Events\OpenWelcomeRequested;
 use Native\Desktop\Contracts\ProvidesPhpIni;
 use Native\Desktop\Facades\AutoUpdater;
 use Native\Desktop\Facades\Menu;
@@ -54,6 +55,7 @@ class NativeAppServiceProvider implements ProvidesPhpIni
             Menu::view(),
             Menu::label('Help')->submenu(
                 Menu::label('Help')->event(OpenHelpRequested::class),
+                Menu::label('Welcome Guide')->event(OpenWelcomeRequested::class),
                 Menu::separator(),
                 Menu::label('Check for Updates...')->event(CheckForUpdatesRequested::class),
             ),

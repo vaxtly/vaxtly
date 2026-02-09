@@ -47,6 +47,15 @@
         @include('components.api-tester.partials.environment-selector')
 
         <button
+            @click="$dispatch('open-welcome-modal')"
+            type="button"
+            class="flex items-center justify-center w-7 h-7 rounded-md border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-200 transition-colors cursor-pointer"
+            title="Welcome Guide"
+        >
+            <x-bt-icon name="sparkles" class="w-4 h-4" />
+        </button>
+
+        <button
             @click="$dispatch('open-help-modal')"
             type="button"
             class="flex items-center justify-center w-7 h-7 rounded-md border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-200 transition-colors cursor-pointer text-xs font-bold"
