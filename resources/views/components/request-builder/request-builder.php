@@ -87,6 +87,9 @@ new class extends Component
 
     public string $layout = 'columns'; // 'rows' or 'columns'
 
+    /** @var array<string> Variable names available in active environment + collection */
+    public array $resolvedVariableNames = [];
+
     public function mount(?string $initialActiveTabId = null, ?string $initialRequestId = null): void
     {
         $this->activeTabId = $initialActiveTabId;
@@ -102,6 +105,14 @@ new class extends Component
     public function updateLayout(?string $layout = null): void
     {
         $this->layout = $layout ?? get_setting('requests.layout', 'columns');
+    }
+
+    public function refreshResolvedVariableNames(): void
+    {
+        $this->resolvedVariableNames = array_keys(
+            app(VariableSubstitutionService::class)
+                ->getResolvedVariables($this->selectedCollectionId)
+        );
     }
 
     #[On('switch-tab')]
@@ -240,6 +251,7 @@ new class extends Component
         $this->apiKeyValue = $auth['api_key_value'] ?? '';
 
         $this->resetResponse();
+        $this->refreshResolvedVariableNames();
     }
 
     /**
@@ -604,7 +616,15 @@ new class extends Component
         // Reload the current request if it exists (may have been updated by a pull)
         if ($this->requestId) {
             $this->loadRequest($this->requestId);
+        } else {
+            $this->refreshResolvedVariableNames();
         }
+    }
+
+    #[On('active-environment-changed')]
+    public function onActiveEnvironmentChanged(): void
+    {
+        $this->refreshResolvedVariableNames();
     }
 
     public function openCodeModal(): void

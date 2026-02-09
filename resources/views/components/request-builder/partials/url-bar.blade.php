@@ -137,6 +137,7 @@
             <input
                 type="text"
                 wire:model="url"
+                x-var-highlight="$wire.resolvedVariableNames"
                 x-on:keydown.enter.prevent="sendHttpRequest()"
                 placeholder="https://api.example.com/endpoint"
                 class="w-full h-10 px-3 text-sm bg-transparent border-none

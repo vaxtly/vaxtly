@@ -59,9 +59,10 @@
                             class="w-full py-1.5 px-2 text-sm rounded-md border shadow-sm bg-white dark:bg-gray-800/80 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-beartropy-500/30 focus:border-beartropy-500 transition-colors"
                         >
                     </div>
-                    <div class="flex-1">
+                    <div class="flex-1 relative">
                         <input
                             x-model="$wire.queryParams[index].value"
+                            x-var-highlight="$wire.resolvedVariableNames"
                             placeholder="Parameter value"
                             class="w-full py-1.5 px-2 text-sm rounded-md border shadow-sm bg-white dark:bg-gray-800/80 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-beartropy-500/30 focus:border-beartropy-500 transition-colors"
                         >
@@ -99,9 +100,10 @@
                             class="w-full py-1.5 px-2 text-sm rounded-md border shadow-sm bg-white dark:bg-gray-800/80 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-beartropy-500/30 focus:border-beartropy-500 transition-colors"
                         >
                     </div>
-                    <div class="flex-1">
+                    <div class="flex-1 relative">
                         <input
                             x-model="$wire.headers[index].value"
+                            x-var-highlight="$wire.resolvedVariableNames"
                             placeholder="Header value"
                             class="w-full py-1.5 px-2 text-sm rounded-md border shadow-sm bg-white dark:bg-gray-800/80 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-beartropy-500/30 focus:border-beartropy-500 transition-colors"
                         >
@@ -195,9 +197,10 @@
                                     class="w-full py-1.5 px-2 text-sm rounded-md border shadow-sm bg-white dark:bg-gray-800/80 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-beartropy-500/30 focus:border-beartropy-500 transition-colors"
                                 >
                             </div>
-                            <div class="flex-1">
+                            <div class="flex-1 relative">
                                 <input
                                     x-model="$wire.formData[index].value"
+                                    x-var-highlight="$wire.resolvedVariableNames"
                                     placeholder="Field value"
                                     class="w-full py-1.5 px-2 text-sm rounded-md border shadow-sm bg-white dark:bg-gray-800/80 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-beartropy-500/30 focus:border-beartropy-500 transition-colors"
                                 >
@@ -302,31 +305,39 @@
             {{-- Bearer Token --}}
             <div x-show="$wire.authType === 'bearer'" x-cloak>
                 <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Token</label>
-                <input
-                    wire:model="authToken"
-                    placeholder="Enter bearer token"
-                    class="w-full py-1.5 px-2 text-sm rounded-md border shadow-sm bg-white dark:bg-gray-800/80 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-beartropy-500/30 focus:border-beartropy-500 transition-colors"
-                >
+                <div class="relative">
+                    <input
+                        wire:model="authToken"
+                        x-var-highlight="$wire.resolvedVariableNames"
+                        placeholder="Enter bearer token"
+                        class="w-full py-1.5 px-2 text-sm rounded-md border shadow-sm bg-white dark:bg-gray-800/80 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-beartropy-500/30 focus:border-beartropy-500 transition-colors"
+                    >
+                </div>
             </div>
 
             {{-- Basic Auth --}}
             <div x-show="$wire.authType === 'basic'" x-cloak class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Username</label>
-                    <input
-                        wire:model="authUsername"
-                        placeholder="Username"
-                        class="w-full py-1.5 px-2 text-sm rounded-md border shadow-sm bg-white dark:bg-gray-800/80 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-beartropy-500/30 focus:border-beartropy-500 transition-colors"
-                    >
+                    <div class="relative">
+                        <input
+                            wire:model="authUsername"
+                            x-var-highlight="$wire.resolvedVariableNames"
+                            placeholder="Username"
+                            class="w-full py-1.5 px-2 text-sm rounded-md border shadow-sm bg-white dark:bg-gray-800/80 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-beartropy-500/30 focus:border-beartropy-500 transition-colors"
+                        >
+                    </div>
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Password</label>
-                    <input
-                        wire:model="authPassword"
-                        type="password"
-                        placeholder="Password"
-                        class="w-full py-1.5 px-2 text-sm rounded-md border shadow-sm bg-white dark:bg-gray-800/80 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-beartropy-500/30 focus:border-beartropy-500 transition-colors"
-                    >
+                    <div class="relative">
+                        <input
+                            wire:model="authPassword"
+                            x-var-highlight="$wire.resolvedVariableNames"
+                            placeholder="Password"
+                            class="w-full py-1.5 px-2 text-sm rounded-md border shadow-sm bg-white dark:bg-gray-800/80 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-beartropy-500/30 focus:border-beartropy-500 transition-colors"
+                        >
+                    </div>
                 </div>
             </div>
 
@@ -342,11 +353,14 @@
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Value</label>
-                    <input
-                        wire:model="apiKeyValue"
-                        placeholder="your-api-key"
-                        class="w-full py-1.5 px-2 text-sm rounded-md border shadow-sm bg-white dark:bg-gray-800/80 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-beartropy-500/30 focus:border-beartropy-500 transition-colors"
-                    >
+                    <div class="relative">
+                        <input
+                            wire:model="apiKeyValue"
+                            x-var-highlight="$wire.resolvedVariableNames"
+                            placeholder="your-api-key"
+                            class="w-full py-1.5 px-2 text-sm rounded-md border shadow-sm bg-white dark:bg-gray-800/80 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-beartropy-500/30 focus:border-beartropy-500 transition-colors"
+                        >
+                    </div>
                 </div>
             </div>
 

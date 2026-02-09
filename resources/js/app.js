@@ -88,6 +88,91 @@ window.setupJsonEditor = (element, content, onChange, isDark, isReadOnly = false
     return view;
 }
 
+// --- Variable Highlight Directive ---
+document.addEventListener('alpine:init', () => {
+    Alpine.directive('var-highlight', (el, { expression }, { evaluate, effect, cleanup }) => {
+        // Ensure parent is positioned for the overlay
+        const wrapper = el.parentNode
+        if (getComputedStyle(wrapper).position === 'static') {
+            wrapper.style.position = 'relative'
+        }
+
+        const overlay = document.createElement('div')
+        overlay.className = 'var-highlight-overlay'
+        wrapper.insertBefore(overlay, el)
+        el.classList.add('var-highlight-input')
+
+        // Copy font and horizontal padding from input so text aligns
+        function syncStyles() {
+            const cs = getComputedStyle(el)
+            overlay.style.fontFamily = cs.fontFamily
+            overlay.style.fontSize = cs.fontSize
+            overlay.style.fontWeight = cs.fontWeight
+            overlay.style.letterSpacing = cs.letterSpacing
+            overlay.style.paddingLeft = cs.paddingLeft
+            overlay.style.paddingRight = cs.paddingRight
+        }
+
+        function escapeHtml(str) {
+            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        }
+
+        function render() {
+            const value = el.value || ''
+            const names = evaluate(expression) || []
+            const nameSet = new Set(names)
+            let html = ''
+            let lastIndex = 0
+            const regex = /\{\{([\w\-\.]+)\}\}/g
+            let match
+
+            while ((match = regex.exec(value)) !== null) {
+                if (match.index > lastIndex) {
+                    html += escapeHtml(value.substring(lastIndex, match.index))
+                }
+                const varName = match[1]
+                const cls = nameSet.has(varName) ? 'var-resolved' : 'var-unresolved'
+                html += '<span class="' + cls + '">' + escapeHtml(match[0]) + '</span>'
+                lastIndex = regex.lastIndex
+            }
+
+            if (lastIndex < value.length) {
+                html += escapeHtml(value.substring(lastIndex))
+            }
+
+            overlay.innerHTML = html + '&nbsp;'
+            overlay.scrollLeft = el.scrollLeft
+        }
+
+        // Initial style sync
+        requestAnimationFrame(syncStyles)
+
+        el.addEventListener('input', render)
+        el.addEventListener('scroll', () => { overlay.scrollLeft = el.scrollLeft })
+
+        // Re-render when resolved names list changes (Alpine reactivity)
+        effect(() => {
+            evaluate(expression)
+            render()
+        })
+
+        // Poll for value changes from Livewire (wire:model sets .value directly)
+        let lastVal = el.value
+        const interval = setInterval(() => {
+            if (el.value !== lastVal) {
+                lastVal = el.value
+                render()
+            }
+        }, 200)
+
+        cleanup(() => {
+            el.removeEventListener('input', render)
+            clearInterval(interval)
+            overlay.remove()
+        })
+    })
+})
+
 window.setupJsonViewer = (element, content, onChange, isDark) => {
     const view = new EditorView({
         doc: content,
