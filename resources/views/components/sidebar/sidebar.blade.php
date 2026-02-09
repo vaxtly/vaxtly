@@ -209,6 +209,24 @@
 
     {{-- Footer --}}
     <div class="px-2 py-0.5 border-t flex items-center justify-between border-gray-200 dark:border-gray-800">
+        {{-- Mode Switcher --}}
+        <div class="flex items-center gap-0.5">
+            <button
+                wire:click="switchMode('collections')"
+                class="p-1.5 rounded transition-colors cursor-pointer {{ $mode === 'collections' ? 'text-beartropy-600 dark:text-beartropy-400 bg-beartropy-50 dark:bg-beartropy-900/30' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800' }}"
+                title="Collections"
+            >
+                <x-bt-icon name="folder" class="w-4 h-4" />
+            </button>
+            <button
+                wire:click="switchMode('environments')"
+                class="p-1.5 rounded transition-colors cursor-pointer {{ $mode === 'environments' ? 'text-beartropy-600 dark:text-beartropy-400 bg-beartropy-50 dark:bg-beartropy-900/30' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800' }}"
+                title="Environments"
+            >
+                <x-bt-icon name="beaker" class="w-4 h-4" />
+            </button>
+        </div>
+
         {{-- Actions --}}
         <div class="flex items-center gap-1">
             {{-- Settings Button --}}
