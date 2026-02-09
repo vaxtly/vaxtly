@@ -7,15 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.7] - 2026-02-08
+
 ### Added
 - Sensitive data warning modal on request save with "Sync without values" option
 - "Sync without values" option in the enable-sync workflow
 - Expanded sensitive keyword detection (82 param keys, 11 header keys)
 - Collection/environment mode switcher icons in sidebar footer
 - Middle-click to close tabs
+- CHANGELOG.md following Keep a Changelog format
 
 ### Changed
 - Restyled Send button to transparent background with brand-colored text
+- Release skill now updates changelog and GitHub Release notes automatically
 
 ### Fixed
 - Sidebar performance optimized for large collections
