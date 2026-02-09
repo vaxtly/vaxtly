@@ -1,5 +1,5 @@
 import CrossProcessExports from "electron";
-import { app, session, powerMonitor } from "electron";
+import { app, BrowserWindow, screen, session, powerMonitor } from "electron";
 import { ChildProcessWithoutNullStreams } from "child_process";
 import { initialize } from "@electron/remote/main/index.js";
 import state from "./server/state.js";
@@ -13,7 +13,8 @@ import {
   startPhpApp,
 } from "./server/index.js";
 import { notifyLaravel } from "./server/utils.js";
-import { resolve } from "path";
+import { resolve, join } from "path";
+import { readFileSync, existsSync } from "fs";
 import { stopAllProcesses } from "./server/api/childProcess.js";
 import ps from "ps-node";
 import killSync from "kill-sync";
@@ -25,6 +26,7 @@ const { autoUpdater } = electronUpdater;
 class NativePHP {
   processes: ChildProcessWithoutNullStreams[] = [];
   mainWindow = null;
+  splashWindow: BrowserWindow | null = null;
   schedulerInterval = undefined;
 
   public bootstrap(
@@ -67,6 +69,8 @@ class NativePHP {
     });
 
     app.on("before-quit", () => {
+      this.closeSplashScreen();
+
       if (this.schedulerInterval) {
           clearInterval(this.schedulerInterval);
       }
@@ -82,6 +86,13 @@ class NativePHP {
     // see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
     app.on("browser-window-created", (_, window) => {
       optimizer.watchWindowShortcuts(window);
+
+      // Close splash screen when the main app window is shown
+      if (this.splashWindow && !this.splashWindow.isDestroyed() && window !== this.splashWindow) {
+        window.once("show", () => {
+          this.closeSplashScreen();
+        });
+      }
     });
 
     app.on("activate", function (event, hasVisibleWindows) {
@@ -97,6 +108,8 @@ class NativePHP {
 
   private async bootstrapApp(app: Electron.CrossProcessExports.App) {
     await app.whenReady();
+
+    this.showSplashScreen();
 
     const config = await this.loadConfig();
 
@@ -257,6 +270,92 @@ class NativePHP {
     this.processes.push(await startPhpApp());
   }
 
+  private showSplashScreen(): void {
+    const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+    const splashWidth = 380;
+    const splashHeight = 260;
+
+    // Try to load the logo image as base64
+    let logoHtml = `<div class="text-logo">Vaxtly</div>`;
+    const possiblePaths = [
+      state.appPath ? join(state.appPath, "public", "images", "name.png") : null,
+      process.env.APP_PATH ? join(process.env.APP_PATH, "public", "images", "name.png") : null,
+    ].filter(Boolean);
+
+    for (const logoPath of possiblePaths) {
+      try {
+        if (existsSync(logoPath)) {
+          const logoBase64 = readFileSync(logoPath).toString("base64");
+          logoHtml = `<img class="logo" src="data:image/png;base64,${logoBase64}" />`;
+          break;
+        }
+      } catch {
+        // Fall back to text logo
+      }
+    }
+
+    const html = `<!DOCTYPE html>
+<html><head><style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    height: 100vh; background: #ffffff;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    -webkit-app-region: drag; user-select: none; overflow: hidden;
+  }
+  .logo { width: 200px; margin-bottom: 36px; }
+  .text-logo {
+    font-size: 36px; font-weight: 800; margin-bottom: 36px; letter-spacing: -0.5px;
+    background: linear-gradient(135deg, #1e1050, #00b4d8);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .loader {
+    width: 56px; height: 3px; background: #e2e8f0;
+    border-radius: 2px; overflow: hidden; position: relative;
+  }
+  .loader::after {
+    content: ''; position: absolute; top: 0; left: -56px;
+    width: 56px; height: 100%;
+    background: linear-gradient(90deg, #1e1050, #00b4d8);
+    border-radius: 2px; animation: slide 1.4s ease-in-out infinite;
+  }
+  @keyframes slide { 0% { left: -56px; } 50% { left: 56px; } 100% { left: -56px; } }
+</style></head>
+<body>${logoHtml}<div class="loader"></div></body></html>`;
+
+    this.splashWindow = new BrowserWindow({
+      width: splashWidth,
+      height: splashHeight,
+      x: Math.round((width - splashWidth) / 2),
+      y: Math.round((height - splashHeight) / 2),
+      frame: false,
+      resizable: false,
+      movable: false,
+      minimizable: false,
+      maximizable: false,
+      alwaysOnTop: true,
+      show: false,
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+      },
+    });
+
+    this.splashWindow.loadURL(
+      `data:text/html;charset=utf-8,${encodeURIComponent(html)}`
+    );
+
+    this.splashWindow.once("ready-to-show", () => {
+      this.splashWindow?.show();
+    });
+  }
+
+  private closeSplashScreen(): void {
+    if (this.splashWindow && !this.splashWindow.isDestroyed()) {
+      this.splashWindow.close();
+      this.splashWindow = null;
+    }
+  }
 
   private stopScheduler() {
       if (this.schedulerInterval) {

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Splash screen with logo and loading indicator shown instantly on app launch
+
+### Changed
+- Enable OPcache with optimized settings for faster app startup and runtime performance (especially on Windows)
+
 ## [0.1.13] - 2026-02-09
 
 ### Added

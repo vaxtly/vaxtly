@@ -33,6 +33,13 @@ class NativeAppServiceProvider implements ProvidesPhpIni
         return [
             'memory_limit' => '512M',
             'max_execution_time' => '300',
+            'opcache.enable' => '1',
+            'opcache.enable_cli' => '1',
+            'opcache.memory_consumption' => '128',
+            'opcache.interned_strings_buffer' => '8',
+            'opcache.max_accelerated_files' => '10000',
+            'opcache.revalidate_freq' => '0',
+            'opcache.validate_timestamps' => '0',
         ];
     }
 
