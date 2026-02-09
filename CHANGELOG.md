@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Welcome modal on first launch highlighting key features (environments, git sync, vault, workspaces)
+- Welcome Guide button (sparkles icon) in tab bar to revisit the modal
+- Welcome Guide item in native Help menu
+- Thin horizontal scrollbars globally matching existing vertical style
 - Configurable request timeout (1-300 seconds) in Settings > General
 - Cancel button to abort in-flight HTTP requests without freezing the app
 - Press Enter in URL input to send request
