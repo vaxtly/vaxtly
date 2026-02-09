@@ -3,11 +3,7 @@
     {{-- Breadcrumb Navigation --}}
     <div class="flex items-center justify-between">
         <div class="flex items-center text-sm text-gray-600 dark:text-gray-300">
-            @php
-                $selectedCollection = $collections->firstWhere('id', $selectedCollectionId);
-                $collectionName = $selectedCollection?->name ?? 'No Collection';
-            @endphp
-            <span class="text-gray-500 dark:text-gray-400">{{ $collectionName }}</span>
+            <span class="text-gray-500 dark:text-gray-400">{{ $collectionName ?: 'No Collection' }}</span>
             @if($folderName)
                 <svg class="w-4 h-4 mx-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>

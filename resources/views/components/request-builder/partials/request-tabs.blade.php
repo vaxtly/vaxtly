@@ -379,7 +379,6 @@
                 @else
                     <div class="space-y-2">
                         @php
-                            $collectionRequests = $this->getCollectionRequests();
                             $requestOptions = [];
                             foreach ($collectionRequests as $r) {
                                 $requestOptions[$r['id']] = strtoupper($r['method']) . ' ' . $r['name'];

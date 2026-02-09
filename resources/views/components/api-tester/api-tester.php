@@ -272,13 +272,13 @@ new class extends Component
         $this->dispatch('switch-tab', tabId: $tabId, requestId: $requestId);
     }
 
-    public function switchTab(string $tabId): void
+    #[On('switch-tab')]
+    public function onSwitchTab(string $tabId, string $requestId): void
     {
         $tab = collect($this->openTabs)->firstWhere('id', $tabId);
         if ($tab) {
             $this->activeTabId = $tabId;
             $this->autoActivateEnvironment($tab['collectionId'] ?? null, $tab['folderId'] ?? null);
-            $this->dispatch('switch-tab', tabId: $tabId, requestId: $tab['requestId']);
         }
     }
 

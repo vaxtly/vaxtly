@@ -62,11 +62,13 @@ new class extends Component
 
     public $error = null;
 
-    public $collections = [];
+    public string $collectionName = '';
 
     public $selectedCollectionId = null;
 
     public ?string $folderName = null;
+
+    public array $collectionRequests = [];
 
     public array $preRequestScripts = [];
 
@@ -88,7 +90,6 @@ new class extends Component
     public function mount(?string $initialActiveTabId = null, ?string $initialRequestId = null): void
     {
         $this->activeTabId = $initialActiveTabId;
-        $this->collections = Collection::ordered()->get();
         $this->layout = get_setting('requests.layout', 'columns');
 
         // If a requestId is provided on mount, load it immediately
@@ -120,6 +121,8 @@ new class extends Component
             // Load fresh from database
             $this->loadRequest($requestId);
         }
+
+        $this->refreshCollectionRequests();
     }
 
     #[On('close-tab')]
@@ -147,6 +150,7 @@ new class extends Component
             'apiKeyName' => $this->apiKeyName,
             'apiKeyValue' => $this->apiKeyValue,
             'selectedCollectionId' => $this->selectedCollectionId,
+            'collectionName' => $this->collectionName,
             'folderName' => $this->folderName,
             'preRequestScripts' => $this->preRequestScripts,
             'postResponseScripts' => $this->postResponseScripts,
@@ -166,7 +170,7 @@ new class extends Component
 
     public function loadRequest(string $requestId): void
     {
-        $request = Request::find($requestId);
+        $request = Request::with('folder')->find($requestId);
 
         if (! $request) {
             return;
@@ -188,6 +192,8 @@ new class extends Component
         }
 
         $this->selectedCollectionId = $request->collection_id;
+        $this->collectionName = Collection::where('id', $request->collection_id)->value('name') ?? '';
+        $this->refreshCollectionRequests();
 
         // Load scripts into UI format
         $this->preRequestScripts = array_map(fn ($s) => [
@@ -557,7 +563,6 @@ new class extends Component
             name: $this->name,
             method: $this->method
         );
-        $this->collections = Collection::ordered()->get();
     }
 
     public function pushRequest(): void
@@ -587,8 +592,6 @@ new class extends Component
     #[On('collections-updated')]
     public function onCollectionsUpdated(): void
     {
-        $this->collections = Collection::ordered()->get();
-
         // Reload the current request if it exists (may have been updated by a pull)
         if ($this->requestId) {
             $this->loadRequest($this->requestId);
@@ -646,13 +649,15 @@ new class extends Component
         $this->postResponseScripts = array_values($this->postResponseScripts);
     }
 
-    public function getCollectionRequests(): array
+    public function refreshCollectionRequests(): void
     {
         if (! $this->selectedCollectionId) {
-            return [];
+            $this->collectionRequests = [];
+
+            return;
         }
 
-        return Request::where('collection_id', $this->selectedCollectionId)
+        $this->collectionRequests = Request::where('collection_id', $this->selectedCollectionId)
             ->where('id', '!=', $this->requestId)
             ->orderBy('name')
             ->get(['id', 'name', 'method'])
