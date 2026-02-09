@@ -2,7 +2,7 @@
     {{-- Folder Header --}}
     <div x-data="{ menuOpen: false }"
          class="group flex items-center justify-between px-2 py-1.5 cursor-pointer hover:bg-gray-200/50 dark:hover:bg-gray-800/50 rounded transition-colors"
-         @click="expandedFolders['{{ $folder->id }}'] = !expandedFolders['{{ $folder->id }}']; $wire.persistExpandedState()"
+         @click="expandedFolders['{{ $folder->id }}'] = !expandedFolders['{{ $folder->id }}']; persistExpanded()"
          @contextmenu.prevent="$dispatch('close-sidebar-menus'); menuOpen = true"
          @close-sidebar-menus.window="menuOpen = false">
         <div class="flex items-center gap-1.5 min-w-0 flex-1">

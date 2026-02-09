@@ -8,10 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Variable highlighting in request inputs: resolved variables show green, unresolved show red
 - Verify SSL toggle in Vault settings to support self-signed certificates
 
 ### Fixed
 - Variable substitution now supports dashes and dots in keys (e.g., `{{x-api-key}}`)
+- Sidebar expanded/collapsed state now persists correctly across reloads and mode switches
 
 ## [0.1.12] - 2026-02-09
 

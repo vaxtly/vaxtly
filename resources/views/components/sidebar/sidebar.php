@@ -114,11 +114,26 @@ new class extends Component
     }
 
     #[Renderless]
-    public function persistExpandedState(): void
+    public function persistExpandedState(?array $expandedCollectionIds = null, ?array $expandedFolderIds = null): void
     {
+        if ($expandedCollectionIds !== null) {
+            $this->expandedCollections = array_fill_keys($expandedCollectionIds, true);
+        }
+        if ($expandedFolderIds !== null) {
+            $this->expandedFolders = array_fill_keys($expandedFolderIds, true);
+        }
+
         $ws = app(WorkspaceService::class);
         $ws->setSetting('ui.expanded_collections', array_keys(array_filter($this->expandedCollections)));
         $ws->setSetting('ui.expanded_folders', array_keys(array_filter($this->expandedFolders)));
+    }
+
+    protected function dispatchExpandedSync(): void
+    {
+        $this->dispatch('sidebar-expanded-sync',
+            collections: $this->expandedCollections,
+            folders: $this->expandedFolders
+        );
     }
 
     public function switchMode(string $mode): void
@@ -600,6 +615,8 @@ new class extends Component
         ]);
 
         $this->expandedCollections[$collection->id] = true;
+        $this->persistExpandedState();
+        $this->dispatchExpandedSync();
         $this->dispatch('collections-updated');
         $this->startEditing($collection->id);
     }
@@ -619,6 +636,7 @@ new class extends Component
         }
 
         $this->persistExpandedState();
+        $this->dispatchExpandedSync();
     }
 
     public function createFolder(string $collectionId, ?string $parentId = null): void
@@ -644,6 +662,9 @@ new class extends Component
             $this->expandedFolders[$parentId] = true;
         }
 
+        $this->persistExpandedState();
+        $this->dispatchExpandedSync();
+
         $collection->markDirty();
         $this->dispatch('collections-updated');
         $this->startFolderEditing($folder->id);
@@ -658,6 +679,8 @@ new class extends Component
             $collection?->markDirty();
         }
         unset($this->expandedFolders[$folderId]);
+        $this->persistExpandedState();
+        $this->dispatchExpandedSync();
         $this->dispatch('collections-updated');
     }
 
@@ -751,6 +774,8 @@ new class extends Component
 
         if ($folderId) {
             $this->expandedFolders[$folderId] = true;
+            $this->persistExpandedState();
+            $this->dispatchExpandedSync();
         }
 
         $this->dispatch('open-request-tab', requestId: $request->id);
@@ -1175,6 +1200,7 @@ new class extends Component
 
         unset($this->workspaces, $this->activeWorkspace, $this->filteredCollections, $this->filteredEnvironments, $this->items);
 
+        $this->dispatchExpandedSync();
         $this->dispatch('workspace-switched', workspaceId: $workspaceId);
         $this->dispatch('collections-updated');
         $this->dispatch('environments-updated');

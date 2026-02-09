@@ -1,8 +1,15 @@
 <div
     x-data="{
-        expandedCollections: $wire.entangle('expandedCollections'),
-        expandedFolders: $wire.entangle('expandedFolders'),
+        expandedCollections: @js($expandedCollections),
+        expandedFolders: @js($expandedFolders),
+        persistExpanded() {
+            $wire.persistExpandedState(
+                Object.keys(this.expandedCollections).filter(k => this.expandedCollections[k]),
+                Object.keys(this.expandedFolders).filter(k => this.expandedFolders[k])
+            )
+        },
     }"
+    x-on:sidebar-expanded-sync.window="expandedCollections = $event.detail.collections; expandedFolders = $event.detail.folders"
     class="h-full flex flex-col bg-gray-50 dark:bg-gray-950 border-r border-gray-200 dark:border-gray-800">
     {{-- Workspace Switcher --}}
     <div class="px-3 pt-3 pb-1">
