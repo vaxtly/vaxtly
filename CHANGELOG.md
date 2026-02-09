@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Configurable request timeout (1-300 seconds) in Settings > General
+- Cancel button to abort in-flight HTTP requests without freezing the app
+- Press Enter in URL input to send request
+
+### Changed
+- HTTP requests now execute in a separate process, keeping the UI responsive during long requests
+
 ## [0.1.11] - 2026-02-09
 
 ### Added
