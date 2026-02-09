@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.11] - 2026-02-09
+
+### Added
+- Persist UI state across restarts — open tabs, active tab, and sidebar expanded/collapsed collections and folders are restored on page load
+- Each workspace maintains independent UI state
+
 ## [0.1.10] - 2026-02-09
 
 ### Fixed
