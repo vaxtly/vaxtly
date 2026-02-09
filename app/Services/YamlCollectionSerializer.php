@@ -17,6 +17,19 @@ class YamlCollectionSerializer
 
     private const MANIFEST_FILE = '_manifest.yaml';
 
+    protected ?SensitiveDataScanner $sanitizer = null;
+
+    /**
+     * Return a clone with the sanitizer set.
+     */
+    public function withSanitizer(SensitiveDataScanner $sanitizer): static
+    {
+        $clone = clone $this;
+        $clone->sanitizer = $sanitizer;
+
+        return $clone;
+    }
+
     /**
      * Serialize a collection to a directory structure.
      * Returns an array of path => content pairs.
@@ -36,14 +49,20 @@ class YamlCollectionSerializer
         $basePath = $collection->id;
 
         // Collection metadata
-        $files[$basePath.'/'.self::COLLECTION_FILE] = $this->toYaml([
+        $collectionData = [
             'id' => $collection->id,
             'name' => $collection->name,
             'description' => $collection->description,
             'variables' => $collection->variables ?? [],
             'environment_ids' => $collection->getEnvironmentIds(),
             'default_environment_id' => $collection->default_environment_id,
-        ]);
+        ];
+
+        if ($this->sanitizer) {
+            $collectionData = $this->sanitizer->sanitizeCollectionData($collectionData);
+        }
+
+        $files[$basePath.'/'.self::COLLECTION_FILE] = $this->toYaml($collectionData);
 
         // Root level manifest
         $rootManifest = $this->buildManifest(
@@ -157,6 +176,10 @@ class YamlCollectionSerializer
 
         if ($request->auth) {
             $data['auth'] = $request->auth;
+        }
+
+        if ($this->sanitizer) {
+            $data = $this->sanitizer->sanitizeRequestData($data);
         }
 
         return $this->toYaml($data);

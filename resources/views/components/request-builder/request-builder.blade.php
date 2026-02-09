@@ -52,4 +52,6 @@
     </div>
 
     @include('components.request-builder.partials.code-snippet-modal')
+
+    @include('components.request-builder.partials.sync-sensitive-modal')
 </div>

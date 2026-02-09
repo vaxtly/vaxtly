@@ -274,6 +274,7 @@
 
     @include('components.sidebar.partials.environment-modal')
     @include('components.sidebar.partials.conflict-modal')
+    @include('components.sidebar.partials.sensitive-data-modal')
 
     @once
     <style>

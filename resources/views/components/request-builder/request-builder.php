@@ -4,6 +4,7 @@ use App\Models\Collection;
 use App\Models\Request;
 use App\Models\RequestHistory;
 use App\Services\ScriptExecutionService;
+use App\Services\SensitiveDataScanner;
 use App\Services\VariableSubstitutionService;
 use App\Traits\HttpColorHelper;
 use Illuminate\Support\Facades\Http;
@@ -74,6 +75,13 @@ new class extends Component
     public bool $showCodeModal = false;
 
     public string $codeLanguage = 'curl';
+
+    // Sync sensitive data modal
+    public bool $showSyncSensitiveModal = false;
+
+    public ?string $pendingSyncRequestId = null;
+
+    public array $pendingSyncFindings = [];
 
     public string $layout = 'columns'; // 'rows' or 'columns'
 
@@ -524,8 +532,23 @@ new class extends Component
 
         // Mark collection as dirty for remote sync (pass request for granular push)
         if ($this->selectedCollectionId) {
+            $collection = Collection::find($this->selectedCollectionId);
             $savedRequest = $this->requestId ? Request::find($this->requestId) : null;
-            Collection::find($this->selectedCollectionId)?->markDirty($savedRequest);
+
+            if ($collection?->sync_enabled && $savedRequest) {
+                $findings = (new SensitiveDataScanner)->scanRequest($savedRequest);
+
+                if (! empty($findings)) {
+                    $this->pendingSyncRequestId = $savedRequest->id;
+                    $this->pendingSyncFindings = $findings;
+                    $this->showSyncSensitiveModal = true;
+                    // Don't call markDirty yet — wait for user choice
+                } else {
+                    $collection->markDirty($savedRequest);
+                }
+            } elseif ($collection) {
+                $collection->markDirty($savedRequest);
+            }
         }
 
         $this->dispatch('request-saved');
@@ -682,6 +705,42 @@ new class extends Component
             'api-key' => $auth + ['api_key_name' => $this->apiKeyName, 'api_key_value' => $this->apiKeyValue],
             default => null,
         };
+    }
+
+    public function confirmSyncAsIs(): void
+    {
+        $request = $this->pendingSyncRequestId ? Request::find($this->pendingSyncRequestId) : null;
+        $collection = $this->selectedCollectionId ? Collection::find($this->selectedCollectionId) : null;
+
+        $this->closeSyncSensitiveModal();
+
+        if ($collection && $request) {
+            $collection->markDirty($request);
+        }
+    }
+
+    public function confirmSyncWithoutValues(): void
+    {
+        $request = $this->pendingSyncRequestId ? Request::find($this->pendingSyncRequestId) : null;
+        $collection = $this->selectedCollectionId ? Collection::find($this->selectedCollectionId) : null;
+
+        $this->closeSyncSensitiveModal();
+
+        if ($collection && $request) {
+            $collection->markDirty($request, sanitize: true);
+        }
+    }
+
+    public function skipSync(): void
+    {
+        $this->closeSyncSensitiveModal();
+    }
+
+    public function closeSyncSensitiveModal(): void
+    {
+        $this->showSyncSensitiveModal = false;
+        $this->pendingSyncRequestId = null;
+        $this->pendingSyncFindings = [];
     }
 
     public function resetResponse(): void

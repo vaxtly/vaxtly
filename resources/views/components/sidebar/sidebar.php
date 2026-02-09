@@ -7,6 +7,7 @@ use App\Models\Folder;
 use App\Models\Request;
 use App\Models\Workspace;
 use App\Services\RemoteSyncService;
+use App\Services\SensitiveDataScanner;
 use App\Services\SessionLogService;
 use App\Services\VaultSyncService;
 use App\Services\WorkspaceService;
@@ -60,6 +61,15 @@ new class extends Component
     public ?string $conflictRemoteSha = null;
 
     public ?string $conflictRemotePath = null;
+
+    // Sensitive data warning modal
+    public bool $showSensitiveDataModal = false;
+
+    public ?string $sensitiveDataCollectionId = null;
+
+    public ?string $sensitiveDataCollectionName = null;
+
+    public array $sensitiveDataFindings = [];
 
     // Environments-specific
     #[Modelable]
@@ -279,8 +289,70 @@ new class extends Component
             return;
         }
 
+        $findings = (new SensitiveDataScanner)->scanCollection($collection);
+
+        if (! empty($findings)) {
+            $this->sensitiveDataCollectionId = $collectionId;
+            $this->sensitiveDataCollectionName = $collection->name;
+            $this->sensitiveDataFindings = $findings;
+            $this->showSensitiveDataModal = true;
+
+            return;
+        }
+
+        $this->performEnableSync($collection);
+    }
+
+    public function confirmEnableSyncWithSensitiveData(): void
+    {
+        if (! $this->sensitiveDataCollectionId) {
+            $this->closeSensitiveDataModal();
+
+            return;
+        }
+
+        $collection = Collection::find($this->sensitiveDataCollectionId);
+        if (! $collection) {
+            $this->closeSensitiveDataModal();
+
+            return;
+        }
+
+        $this->closeSensitiveDataModal();
+        $this->performEnableSync($collection);
+    }
+
+    public function confirmEnableSyncSanitized(): void
+    {
+        if (! $this->sensitiveDataCollectionId) {
+            $this->closeSensitiveDataModal();
+
+            return;
+        }
+
+        $collection = Collection::find($this->sensitiveDataCollectionId);
+        if (! $collection) {
+            $this->closeSensitiveDataModal();
+
+            return;
+        }
+
+        $this->closeSensitiveDataModal();
+        $this->performEnableSync($collection, sanitize: true);
+    }
+
+    public function closeSensitiveDataModal(): void
+    {
+        $this->showSensitiveDataModal = false;
+        $this->sensitiveDataCollectionId = null;
+        $this->sensitiveDataCollectionName = null;
+        $this->sensitiveDataFindings = [];
+    }
+
+    protected function performEnableSync(Collection $collection, bool $sanitize = false): void
+    {
         $collection->update(['sync_enabled' => true]);
-        $collection->syncToRemote();
+        $collection->syncToRemote(sanitize: $sanitize);
         $this->dispatch('collections-updated');
         $this->toast()->success('Sync enabled', $collection->name);
     }

@@ -271,7 +271,7 @@ class RemoteSyncService
      *
      * @throws SyncConflictException if real conflicts detected
      */
-    public function pushCollection(Collection $collection): void
+    public function pushCollection(Collection $collection, bool $sanitize = false): void
     {
         $startTime = microtime(true);
         \Log::info('[SYNC] pushCollection START');
@@ -284,6 +284,9 @@ class RemoteSyncService
         \Log::info('[SYNC] getProvider: '.round((microtime(true) - $startTime) * 1000).'ms');
 
         $serializer = new YamlCollectionSerializer;
+        if ($sanitize) {
+            $serializer = $serializer->withSanitizer(new SensitiveDataScanner);
+        }
         $localFiles = $serializer->serializeToDirectory($collection);
 
         \Log::info('[SYNC] serialize: '.round((microtime(true) - $startTime) * 1000).'ms, files='.count($localFiles));
@@ -634,7 +637,7 @@ class RemoteSyncService
      * Push a single request file to remote (granular sync).
      * Returns true if pushed successfully, false on failure (marks dirty silently).
      */
-    public function pushSingleRequest(Collection $collection, Request $request): bool
+    public function pushSingleRequest(Collection $collection, Request $request, bool $sanitize = false): bool
     {
         $provider = $this->getProvider();
         if (! $provider) {
@@ -643,6 +646,9 @@ class RemoteSyncService
 
         try {
             $serializer = new YamlCollectionSerializer;
+            if ($sanitize) {
+                $serializer = $serializer->withSanitizer(new SensitiveDataScanner);
+            }
             $content = $serializer->serializeRequest($request);
 
             $filePath = self::COLLECTIONS_PATH.'/'.$collection->id.'/'.$this->buildFolderPath($request).$request->id.'.yaml';

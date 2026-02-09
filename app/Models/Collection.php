@@ -104,13 +104,13 @@ class Collection extends Model
         return $query->where('is_dirty', true);
     }
 
-    public function markDirty(?Request $changedRequest = null): void
+    public function markDirty(?Request $changedRequest = null, bool $sanitize = false): void
     {
         if (! $this->sync_enabled) {
             return;
         }
 
-        $this->syncToRemote($changedRequest);
+        $this->syncToRemote($changedRequest, $sanitize);
     }
 
     /**
@@ -119,16 +119,16 @@ class Collection extends Model
      * attempts granular single-file push. Otherwise does a full push.
      * Falls back to marking dirty if the push fails.
      */
-    public function syncToRemote(?Request $changedRequest = null): void
+    public function syncToRemote(?Request $changedRequest = null, bool $sanitize = false): void
     {
         try {
             $syncService = new \App\Services\RemoteSyncService;
             if ($syncService->isConfigured()) {
                 if ($changedRequest && $this->remote_sha) {
                     // Granular single-file push
-                    $syncService->pushSingleRequest($this, $changedRequest);
+                    $syncService->pushSingleRequest($this, $changedRequest, $sanitize);
                 } else {
-                    $syncService->pushCollection($this);
+                    $syncService->pushCollection($this, $sanitize);
                 }
 
                 return;
