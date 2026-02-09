@@ -19,3 +19,28 @@
 @source "../../vendor/beartropy/ui/src/Components";
 
 @custom-variant dark (&:where(.dark, .dark *));
+
+/* Thin horizontal scrollbars globally */
+::-webkit-scrollbar:horizontal {
+    height: 5px;
+}
+
+::-webkit-scrollbar-track:horizontal {
+    border-radius: 8px;
+    background-color: #e7e7e7;
+    border: 1px solid #cacaca;
+}
+
+::-webkit-scrollbar-thumb:horizontal {
+    border-radius: 8px;
+    background-color: #cacaca;
+}
+
+.dark ::-webkit-scrollbar-track:horizontal {
+    background-color: #23272e;
+    border: 1px solid #3c4048;
+}
+
+.dark ::-webkit-scrollbar-thumb:horizontal {
+    background-color: #3c4048;
+}
