@@ -22,6 +22,12 @@ jobs:
           - os: windows-latest
             platform: win
             arch: x64
+          - os: macos-latest
+            platform: mac
+            arch: arm64
+          - os: macos-13
+            platform: mac
+            arch: x64
 
     runs-on: ${{ matrix.os }}
     name: Build (${{ matrix.platform }}-${{ matrix.arch }})
@@ -66,21 +72,36 @@ jobs:
       - name: Configure production environment
         shell: bash
         run: |
-          sed -i 's/APP_ENV=local/APP_ENV=production/' .env
-          sed -i 's/APP_DEBUG=true/APP_DEBUG=false/' .env
-          sed -i 's/GITHUB_REPO=/GITHUB_REPO=vaxtly/' .env
-          sed -i 's/GITHUB_OWNER=/GITHUB_OWNER=vaxtly/' .env
-          sed -i 's/GITHUB_RELEASE_TYPE=draft/GITHUB_RELEASE_TYPE=release/' .env
-          sed -i "s/GITHUB_TOKEN=/GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}/" .env
+          if [[ "$RUNNER_OS" == "macOS" ]]; then
+            SED_INPLACE=(sed -i '')
+          else
+            SED_INPLACE=(sed -i)
+          fi
+          "${SED_INPLACE[@]}" 's/APP_ENV=local/APP_ENV=production/' .env
+          "${SED_INPLACE[@]}" 's/APP_DEBUG=true/APP_DEBUG=false/' .env
+          "${SED_INPLACE[@]}" 's/GITHUB_REPO=/GITHUB_REPO=vaxtly/' .env
+          "${SED_INPLACE[@]}" 's/GITHUB_OWNER=/GITHUB_OWNER=vaxtly/' .env
+          "${SED_INPLACE[@]}" 's/GITHUB_RELEASE_TYPE=draft/GITHUB_RELEASE_TYPE=release/' .env
+          "${SED_INPLACE[@]}" "s/GITHUB_TOKEN=/GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}/" .env
 
       - name: Set version
         shell: bash
         run: |
           VERSION="${{ inputs.version }}"
           VERSION="${VERSION#v}"
-          sed -i.bak "s/'version' => env('NATIVEPHP_APP_VERSION', '[^']*')/'version' => env('NATIVEPHP_APP_VERSION', '$VERSION')/" config/nativephp.php
+          if [[ "$RUNNER_OS" == "macOS" ]]; then
+            sed -i '' "s/'version' => env('NATIVEPHP_APP_VERSION', '[^']*')/'version' => env('NATIVEPHP_APP_VERSION', '$VERSION')/" config/nativephp.php
+          else
+            sed -i "s/'version' => env('NATIVEPHP_APP_VERSION', '[^']*')/'version' => env('NATIVEPHP_APP_VERSION', '$VERSION')/" config/nativephp.php
+          fi
 
       - name: Build and publish native app
+        env:
+          NATIVEPHP_APPLE_ID: ${{ secrets.NATIVEPHP_APPLE_ID }}
+          NATIVEPHP_APPLE_ID_PASS: ${{ secrets.NATIVEPHP_APPLE_ID_PASS }}
+          NATIVEPHP_APPLE_TEAM_ID: ${{ secrets.NATIVEPHP_APPLE_TEAM_ID }}
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
         run: php artisan native:build ${{ matrix.platform }} ${{ matrix.arch }} --publish --no-interaction
 
       - name: Upload artifacts
@@ -92,4 +113,6 @@ jobs:
             nativephp/electron/dist/*.AppImage
             nativephp/electron/dist/*.exe
             nativephp/electron/dist/*-setup.exe
+            nativephp/electron/dist/*.dmg
+            nativephp/electron/dist/*.zip
           retention-days: 30
