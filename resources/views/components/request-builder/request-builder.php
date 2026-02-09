@@ -155,6 +155,11 @@ new class extends Component
             'folderName' => $this->folderName,
             'preRequestScripts' => $this->preRequestScripts,
             'postResponseScripts' => $this->postResponseScripts,
+            'response' => $this->response,
+            'statusCode' => $this->statusCode,
+            'duration' => $this->duration,
+            'responseHeaders' => $this->responseHeaders,
+            'error' => $this->error,
         ];
     }
 
@@ -163,8 +168,6 @@ new class extends Component
         foreach ($state as $key => $value) {
             $this->$key = $value;
         }
-
-        $this->resetResponse();
     }
 
     public function loadRequest(string $requestId): void
