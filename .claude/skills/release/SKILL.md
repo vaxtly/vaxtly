@@ -55,5 +55,5 @@ The project maintains a `CHANGELOG.md` following [Keep a Changelog](https://keep
 8. Commit with message: `Bump version to A.B.C`
 9. Push to remote.
 10. Trigger the build: `gh workflow run build.yml -f version=A.B.C -R vaxtly/vaxtly`
-11. After the build completes and the GitHub Release is created, update its body with the changelog content for this version using: `gh release edit A.B.C -R vaxtly/vaxtly --notes "$(changelog content)"`. Use a HEREDOC for the notes body. Format: use the changelog subsections (Added, Changed, Fixed, etc.) as markdown.
+11. Wait for the build to complete (`gh run list -R vaxtly/vaxtly --workflow=build.yml --limit 1 --json status --jq '.[0].status'`). Once done, update the GitHub Release body (the tag uses a `v` prefix): `gh release edit vA.B.C -R vaxtly/vaxtly --notes "$(changelog content)"`. Use a HEREDOC for the notes body. Format: use the changelog subsections (Added, Changed, Fixed, etc.) as markdown.
 12. Show the user how to check build status: `gh run list -R vaxtly/vaxtly --workflow=build.yml --limit 3`
