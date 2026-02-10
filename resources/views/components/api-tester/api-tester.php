@@ -5,7 +5,6 @@ use App\Models\Environment;
 use App\Models\Folder;
 use App\Models\Request;
 use App\Services\RemoteSyncService;
-use App\Services\VaultSyncService;
 use App\Services\WorkspaceService;
 use Beartropy\Ui\Traits\HasToasts;
 use Illuminate\Support\Str;
@@ -47,13 +46,6 @@ new class extends Component
             $this->showWelcomeModal = true;
             set_setting('app.welcome_shown', true);
         }
-    }
-
-    #[On('run-auto-sync')]
-    public function runAutoSync(): void
-    {
-        $this->autoSyncOnStart();
-        $this->autoVaultSyncOnStart();
     }
 
     private function restoreTabs(): void
@@ -115,51 +107,6 @@ new class extends Component
             requestId: $tab['requestId'] ?? null,
             environmentId: $tab['environmentId'] ?? null,
         );
-    }
-
-    private function autoSyncOnStart(): void
-    {
-        if (! app(WorkspaceService::class)->getSetting('remote.auto_sync')) {
-            return;
-        }
-
-        try {
-            $syncService = new RemoteSyncService;
-            if (! $syncService->isConfigured()) {
-                return;
-            }
-
-            $result = $syncService->pull();
-            if ($result->pulled > 0) {
-                $this->loadCollections();
-                $this->dispatch('collections-updated');
-            }
-        } catch (\Exception $e) {
-            $this->toast()->warning('Git sync failed', $e->getMessage());
-        }
-    }
-
-    private function autoVaultSyncOnStart(): void
-    {
-        if (! app(WorkspaceService::class)->getSetting('vault.auto_sync', true)) {
-            return;
-        }
-
-        try {
-            $vaultService = new VaultSyncService;
-            if (! $vaultService->isConfigured()) {
-                return;
-            }
-
-            $result = $vaultService->pullAll();
-
-            if ($result['created'] > 0) {
-                unset($this->environments, $this->activeEnvironmentId);
-                $this->dispatch('environments-updated');
-            }
-        } catch (\Exception $e) {
-            $this->toast()->warning('Vault sync failed', $e->getMessage());
-        }
     }
 
     public function dehydrate(): void
@@ -251,7 +198,12 @@ new class extends Component
 
     public function loadCollections(): void
     {
-        $this->collections = Collection::with('requests')->forWorkspace($this->activeWorkspaceId)->ordered()->get();
+        $this->collections = Collection::query()
+            ->select(['id', 'name', 'order', 'workspace_id', 'sync_enabled', 'is_dirty', 'environment_ids', 'default_environment_id', 'remote_sha', 'created_at', 'updated_at'])
+            ->with('requests')
+            ->forWorkspace($this->activeWorkspaceId)
+            ->ordered()
+            ->get();
     }
 
     #[On('request-saved')]

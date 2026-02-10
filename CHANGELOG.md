@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- App freeze after update: auto-sync now runs in a separate Livewire component so UI stays responsive during git/vault sync
+- Optimized collection loading to skip encrypted columns, reducing unnecessary IPC decrypt calls on boot
+
 ## [0.1.22] - 2026-02-10
 
 ### Added
