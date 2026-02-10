@@ -42,13 +42,18 @@ new class extends Component
         $this->activeWorkspaceId = app(WorkspaceService::class)->activeId();
         $this->loadCollections();
         $this->restoreTabs();
-        $this->autoSyncOnStart();
-        $this->autoVaultSyncOnStart();
 
         if (! get_setting('app.welcome_shown', false)) {
             $this->showWelcomeModal = true;
             set_setting('app.welcome_shown', true);
         }
+    }
+
+    #[On('run-auto-sync')]
+    public function runAutoSync(): void
+    {
+        $this->autoSyncOnStart();
+        $this->autoVaultSyncOnStart();
     }
 
     private function restoreTabs(): void

@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Services\EncryptionService;
 use App\Services\WorkspaceService;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Migrations\Migrator;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
@@ -43,6 +44,14 @@ class AppServiceProvider extends ServiceProvider
         }
 
         try {
+            $migrator = app(Migrator::class);
+            $allFiles = $migrator->getMigrationFiles($migrator->paths());
+            $ran = $migrator->getRepository()->getRan();
+
+            if (count($allFiles) <= count($ran)) {
+                return;
+            }
+
             Artisan::call('migrate', ['--force' => true]);
         } catch (\Throwable) {
             // Silently fail if the database isn't available yet

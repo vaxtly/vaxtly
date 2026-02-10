@@ -1,4 +1,7 @@
-<div class="flex h-screen bg-gray-50 dark:bg-gray-900 overflow-hidden">
+<div
+    class="flex h-screen bg-gray-50 dark:bg-gray-900 overflow-hidden"
+    x-init="$nextTick(() => Livewire.dispatch('run-auto-sync'))"
+>
     {{-- Sidebar --}}
     <div class="w-80 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0">
         <livewire:sidebar />
