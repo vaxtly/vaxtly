@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.18] - 2026-02-10
+
+### Added
+- Update available toast notification on macOS with brew upgrade instructions (auto-update can't install unsigned builds)
+
 ### Fixed
 - App crash (500 error) when vault or git server is unreachable on start (e.g. no VPN); now shows a warning toast instead
 - macOS auto-updater not finding updates due to `latest-mac.yml` missing arm64 entries
