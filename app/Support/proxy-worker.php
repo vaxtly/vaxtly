@@ -17,6 +17,29 @@ foreach ($config['headers'] ?? [] as $key => $value) {
     $headers[] = "$key: $value";
 }
 
+// Detect CA bundle for SSL verification (bundled PHP on macOS may not find system certs)
+$cafile = null;
+$candidates = [
+    ini_get('openssl.cafile') ?: null,
+    '/etc/ssl/cert.pem',                    // macOS
+    '/etc/ssl/certs/ca-certificates.crt',   // Debian/Ubuntu
+    '/etc/pki/tls/certs/ca-bundle.crt',     // RHEL/CentOS
+];
+foreach ($candidates as $path) {
+    if ($path && is_file($path)) {
+        $cafile = $path;
+        break;
+    }
+}
+
+$ssl = [
+    'verify_peer' => true,
+    'verify_peer_name' => true,
+];
+if ($cafile) {
+    $ssl['cafile'] = $cafile;
+}
+
 $context = stream_context_create([
     'http' => [
         'method' => $config['method'] ?? 'GET',
@@ -27,10 +50,7 @@ $context = stream_context_create([
         'follow_location' => 1,
         'max_redirects' => 5,
     ],
-    'ssl' => [
-        'verify_peer' => true,
-        'verify_peer_name' => true,
-    ],
+    'ssl' => $ssl,
 ]);
 
 $body = @file_get_contents($config['url'], false, $context);
