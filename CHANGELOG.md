@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.15] - 2026-02-09
+
+### Added
+- macOS build support (Apple Silicon arm64 and Intel x64) in CI workflow
+
+### Fixed
+- Migrations now check for existing columns before adding them, preventing errors on app updates
+
 ## [0.1.14] - 2026-02-09
 
 ### Added
