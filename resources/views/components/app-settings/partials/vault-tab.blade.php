@@ -109,6 +109,15 @@
         <x-beartropy-ui::toggle wire:model.live="vaultVerifySsl" sm />
     </div>
 
+    {{-- Auto-sync toggle --}}
+    <div class="flex items-center justify-between">
+        <div>
+            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300">Auto-sync on start</label>
+            <p class="text-[10px] text-gray-400 dark:text-gray-500">Pull vault environments when the app loads</p>
+        </div>
+        <x-beartropy-ui::toggle wire:model.live="vaultAutoSync" sm />
+    </div>
+
     {{-- Divider --}}
     <div class="border-t border-gray-200 dark:border-gray-700"></div>
 

@@ -178,6 +178,8 @@ it('exports config without tokens', function () {
         ->and($config['remote'])->not->toHaveKey('token')
         ->and($config['vault']['provider'])->toBe('hashicorp')
         ->and($config['vault']['url'])->toBe('https://vault.example.com')
+        ->and($config['vault']['verify_ssl'])->toBeBool()
+        ->and($config['vault']['auto_sync'])->toBeBool()
         ->and($config['vault'])->not->toHaveKey('token');
 });
 
@@ -379,6 +381,8 @@ it('imports config from a vaxtly export', function () {
                     'auth_method' => 'approle',
                     'namespace' => 'new-ns',
                     'mount' => 'kv/data',
+                    'verify_ssl' => false,
+                    'auto_sync' => false,
                 ],
             ],
         ],
@@ -395,7 +399,9 @@ it('imports config from a vaxtly export', function () {
         ->and($ws->getSetting('remote.repository'))->toBe('group/project')
         ->and($ws->getSetting('remote.branch'))->toBe('develop')
         ->and($ws->getSetting('vault.url'))->toBe('https://new-vault.com')
-        ->and($ws->getSetting('vault.auth_method'))->toBe('approle');
+        ->and($ws->getSetting('vault.auth_method'))->toBe('approle')
+        ->and($ws->getSetting('vault.verify_ssl'))->toBeFalsy()
+        ->and($ws->getSetting('vault.auto_sync'))->toBe('0');
 });
 
 it('imports all data types from a full export', function () {

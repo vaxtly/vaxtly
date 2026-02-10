@@ -48,7 +48,7 @@ new class extends Component
 
     public string $remoteBranch = 'main';
 
-    public bool $remoteAutoSync = false;
+    public bool $remoteAutoSync = true;
 
     public string $remoteStatus = '';
 
@@ -81,6 +81,8 @@ new class extends Component
 
     public bool $vaultVerifySsl = true;
 
+    public bool $vaultAutoSync = true;
+
     public string $vaultStatus = '';
 
     public bool $isVaultTesting = false;
@@ -104,7 +106,7 @@ new class extends Component
         $this->remoteRepository = $ws->getSetting('remote.repository', '') ?? '';
         $this->remoteToken = $ws->getSetting('remote.token', '') ?? '';
         $this->remoteBranch = $ws->getSetting('remote.branch', 'main') ?? 'main';
-        $this->remoteAutoSync = (bool) $ws->getSetting('remote.auto_sync', false);
+        $this->remoteAutoSync = (bool) $ws->getSetting('remote.auto_sync', true);
     }
 
     private function loadVaultSettings(): void
@@ -120,6 +122,7 @@ new class extends Component
         // Mount contains full engine path (e.g., 'secret/myapp')
         $this->vaultMount = $ws->getSetting('vault.mount', 'secret') ?? 'secret';
         $this->vaultVerifySsl = $ws->getSetting('vault.verify_ssl', true);
+        $this->vaultAutoSync = (bool) $ws->getSetting('vault.auto_sync', true);
     }
 
     public function updatedLayout($value): void
@@ -456,6 +459,7 @@ new class extends Component
         // Mount contains full engine path (e.g., 'secret/myapp')
         $ws->setSetting('vault.mount', $this->vaultMount ?: 'secret');
         $ws->setSetting('vault.verify_ssl', $this->vaultVerifySsl);
+        $ws->setSetting('vault.auto_sync', $this->vaultAutoSync ? '1' : '0');
 
         $this->vaultStatus = 'Settings saved.';
     }

@@ -272,6 +272,12 @@ class DataExportImportService
                 if (isset($vault['mount'])) {
                     $ws->setSetting('vault.mount', $vault['mount']);
                 }
+                if (isset($vault['verify_ssl'])) {
+                    $ws->setSetting('vault.verify_ssl', $vault['verify_ssl']);
+                }
+                if (isset($vault['auto_sync'])) {
+                    $ws->setSetting('vault.auto_sync', $vault['auto_sync'] ? '1' : '0');
+                }
             }
 
             return ['success' => true, 'errors' => $errors];
@@ -414,6 +420,8 @@ class DataExportImportService
                 'auth_method' => $ws->getSetting('vault.auth_method', 'token'),
                 'namespace' => $ws->getSetting('vault.namespace', ''),
                 'mount' => $ws->getSetting('vault.mount', 'secret'),
+                'verify_ssl' => (bool) $ws->getSetting('vault.verify_ssl', true),
+                'auto_sync' => (bool) $ws->getSetting('vault.auto_sync', true),
             ],
         ];
     }

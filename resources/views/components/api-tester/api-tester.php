@@ -5,6 +5,7 @@ use App\Models\Environment;
 use App\Models\Folder;
 use App\Models\Request;
 use App\Services\RemoteSyncService;
+use App\Services\VaultSyncService;
 use App\Services\WorkspaceService;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Computed;
@@ -42,6 +43,7 @@ new class extends Component
         $this->loadCollections();
         $this->restoreTabs();
         $this->autoSyncOnStart();
+        $this->autoVaultSyncOnStart();
 
         if (! get_setting('app.welcome_shown', false)) {
             $this->showWelcomeModal = true;
@@ -101,6 +103,29 @@ new class extends Component
             if ($result->pulled > 0) {
                 $this->loadCollections();
                 $this->dispatch('collections-updated');
+            }
+        } catch (\Exception) {
+            // Silently fail on auto-sync
+        }
+    }
+
+    private function autoVaultSyncOnStart(): void
+    {
+        if (! app(WorkspaceService::class)->getSetting('vault.auto_sync', true)) {
+            return;
+        }
+
+        $vaultService = new VaultSyncService;
+        if (! $vaultService->isConfigured()) {
+            return;
+        }
+
+        try {
+            $result = $vaultService->pullAll();
+
+            if ($result['created'] > 0) {
+                unset($this->environments, $this->activeEnvironmentId);
+                $this->dispatch('environments-updated');
             }
         } catch (\Exception) {
             // Silently fail on auto-sync
