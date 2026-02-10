@@ -1,6 +1,6 @@
 {
     "name": "vaxtly",
-    "version": "0.1.21",
+    "version": "0.1.22",
     "description": "API testing tool",
     "main": "./out/main/index.js",
     "author": "smithingcode",
