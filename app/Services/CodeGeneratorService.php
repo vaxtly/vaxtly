@@ -47,7 +47,7 @@ class CodeGeneratorService
     {
         $headers = [];
         foreach ($this->requestData['headers'] as $header) {
-            if (! empty($header['key'])) {
+            if (! empty($header['key']) && ($header['enabled'] ?? true)) {
                 $headers[$this->sub($header['key'])] = $this->sub($header['value']);
             }
         }
@@ -80,7 +80,7 @@ class CodeGeneratorService
         $url = $this->sub($this->requestData['url']);
         $params = [];
         foreach ($this->requestData['queryParams'] as $param) {
-            if (! empty($param['key'])) {
+            if (! empty($param['key']) && ($param['enabled'] ?? true)) {
                 $params[$this->sub($param['key'])] = $this->sub($param['value']);
             }
         }

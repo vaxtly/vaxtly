@@ -8,8 +8,8 @@
             class="px-3 py-1.5 text-xs font-medium border-b-2 -mb-px transition-colors cursor-pointer"
         >
             Params
-            <template x-if="$wire.queryParams.filter(p => p.key).length > 0">
-                <span class="ml-1 px-1.5 py-0.5 text-[10px] bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400 rounded-full" x-text="$wire.queryParams.filter(p => p.key).length"></span>
+            <template x-if="$wire.queryParams.filter(p => p.key && (p.enabled ?? true)).length > 0">
+                <span class="ml-1 px-1.5 py-0.5 text-[10px] bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400 rounded-full" x-text="$wire.queryParams.filter(p => p.key && (p.enabled ?? true)).length"></span>
             </template>
         </button>
         <button
@@ -18,8 +18,8 @@
             class="px-3 py-1.5 text-xs font-medium border-b-2 -mb-px transition-colors cursor-pointer"
         >
             Headers
-            <template x-if="$wire.headers.filter(h => h.key).length > 0">
-                <span class="ml-1 px-1.5 py-0.5 text-[10px] bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400 rounded-full" x-text="$wire.headers.filter(h => h.key).length"></span>
+            <template x-if="$wire.headers.filter(h => h.key && (h.enabled ?? true)).length > 0">
+                <span class="ml-1 px-1.5 py-0.5 text-[10px] bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400 rounded-full" x-text="$wire.headers.filter(h => h.key && (h.enabled ?? true)).length"></span>
             </template>
         </button>
         <button
@@ -52,11 +52,25 @@
         <div class="space-y-2" wire:ignore>
             <template x-for="(param, index) in $wire.queryParams" :key="index">
                 <div class="flex gap-2 items-center">
+                    <button
+                        @click="$wire.queryParams[index].enabled = !(param.enabled ?? true)"
+                        type="button"
+                        class="w-6 flex items-center justify-center p-0.5 rounded transition-colors cursor-pointer"
+                        :class="(param.enabled ?? true) ? 'text-green-500' : 'text-gray-300 dark:text-gray-600'"
+                    >
+                        <svg x-show="param.enabled ?? true" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        <svg x-show="!(param.enabled ?? true)" x-cloak class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
                     <div class="flex-1">
                         <input
                             x-model="$wire.queryParams[index].key"
                             placeholder="Parameter name"
-                            class="w-full py-1.5 px-2 text-sm rounded-md border shadow-sm bg-white dark:bg-gray-800/80 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-beartropy-500/30 focus:border-beartropy-500 transition-colors"
+                            :disabled="!(param.enabled ?? true)"
+                            class="w-full py-1.5 px-2 text-sm rounded-md border shadow-sm bg-white dark:bg-gray-800/80 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-beartropy-500/30 focus:border-beartropy-500 transition-colors disabled:opacity-40"
                         >
                     </div>
                     <div class="flex-1 relative">
@@ -64,7 +78,8 @@
                             x-model="$wire.queryParams[index].value"
                             x-var-highlight="$wire.resolvedVariableNames"
                             placeholder="Parameter value"
-                            class="w-full py-1.5 px-2 text-sm rounded-md border shadow-sm bg-white dark:bg-gray-800/80 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-beartropy-500/30 focus:border-beartropy-500 transition-colors"
+                            :disabled="!(param.enabled ?? true)"
+                            class="w-full py-1.5 px-2 text-sm rounded-md border shadow-sm bg-white dark:bg-gray-800/80 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-beartropy-500/30 focus:border-beartropy-500 transition-colors disabled:opacity-40"
                         >
                     </div>
                     <button
@@ -93,11 +108,25 @@
         <div class="space-y-2" wire:ignore>
             <template x-for="(header, index) in $wire.headers" :key="index">
                 <div class="flex gap-2 items-center">
+                    <button
+                        @click="$wire.headers[index].enabled = !(header.enabled ?? true)"
+                        type="button"
+                        class="w-6 flex items-center justify-center p-0.5 rounded transition-colors cursor-pointer"
+                        :class="(header.enabled ?? true) ? 'text-green-500' : 'text-gray-300 dark:text-gray-600'"
+                    >
+                        <svg x-show="header.enabled ?? true" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        <svg x-show="!(header.enabled ?? true)" x-cloak class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
                     <div class="flex-1">
                         <input
                             x-model="$wire.headers[index].key"
                             placeholder="Header name"
-                            class="w-full py-1.5 px-2 text-sm rounded-md border shadow-sm bg-white dark:bg-gray-800/80 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-beartropy-500/30 focus:border-beartropy-500 transition-colors"
+                            :disabled="!(header.enabled ?? true)"
+                            class="w-full py-1.5 px-2 text-sm rounded-md border shadow-sm bg-white dark:bg-gray-800/80 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-beartropy-500/30 focus:border-beartropy-500 transition-colors disabled:opacity-40"
                         >
                     </div>
                     <div class="flex-1 relative">
@@ -105,7 +134,8 @@
                             x-model="$wire.headers[index].value"
                             x-var-highlight="$wire.resolvedVariableNames"
                             placeholder="Header value"
-                            class="w-full py-1.5 px-2 text-sm rounded-md border shadow-sm bg-white dark:bg-gray-800/80 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-beartropy-500/30 focus:border-beartropy-500 transition-colors"
+                            :disabled="!(header.enabled ?? true)"
+                            class="w-full py-1.5 px-2 text-sm rounded-md border shadow-sm bg-white dark:bg-gray-800/80 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-beartropy-500/30 focus:border-beartropy-500 transition-colors disabled:opacity-40"
                         >
                     </div>
                     <button

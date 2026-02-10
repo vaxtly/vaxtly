@@ -27,9 +27,9 @@ new class extends Component
 
     public $method = 'GET';
 
-    public $headers = [['key' => '', 'value' => '']];
+    public $headers = [['key' => '', 'value' => '', 'enabled' => true]];
 
-    public $queryParams = [['key' => '', 'value' => '']];
+    public $queryParams = [['key' => '', 'value' => '', 'enabled' => true]];
 
     public $body = '';
 
@@ -239,11 +239,11 @@ new class extends Component
 
         // Convert arrays to key-value pairs (handles both flat and structured formats)
         $this->headers = empty($request->headers)
-            ? [['key' => '', 'value' => '']]
+            ? [['key' => '', 'value' => '', 'enabled' => true]]
             : $this->normalizeKeyValuePairs($request->headers);
 
         $this->queryParams = empty($request->query_params)
-            ? [['key' => '', 'value' => '']]
+            ? [['key' => '', 'value' => '', 'enabled' => true]]
             : $this->normalizeKeyValuePairs($request->query_params);
 
         // Load auth settings
@@ -262,7 +262,7 @@ new class extends Component
     /**
      * Normalize key-value pairs from either flat ({'key': 'value'}) or structured ([{key, value, enabled}]) format.
      *
-     * @return array<array{key: string, value: string}>
+     * @return array<array{key: string, value: string, enabled: bool}>
      */
     private function normalizeKeyValuePairs(array $data): array
     {
@@ -271,6 +271,7 @@ new class extends Component
             return array_map(fn (array $item) => [
                 'key' => is_string($item['key'] ?? '') ? ($item['key'] ?? '') : json_encode($item['key']),
                 'value' => is_string($item['value'] ?? '') ? ($item['value'] ?? '') : json_encode($item['value']),
+                'enabled' => $item['enabled'] ?? true,
             ], $data);
         }
 
@@ -278,13 +279,14 @@ new class extends Component
         return array_map(fn ($k, $v) => [
             'key' => (string) $k,
             'value' => is_string($v) ? $v : json_encode($v),
+            'enabled' => true,
         ], array_keys($data), $data);
     }
 
     #[Renderless]
     public function addHeader(): void
     {
-        $this->headers[] = ['key' => '', 'value' => ''];
+        $this->headers[] = ['key' => '', 'value' => '', 'enabled' => true];
     }
 
     #[Renderless]
@@ -294,14 +296,22 @@ new class extends Component
         $this->headers = array_values($this->headers);
 
         if (empty($this->headers)) {
-            $this->headers = [['key' => '', 'value' => '']];
+            $this->headers = [['key' => '', 'value' => '', 'enabled' => true]];
+        }
+    }
+
+    #[Renderless]
+    public function toggleHeader(int $index): void
+    {
+        if (isset($this->headers[$index])) {
+            $this->headers[$index]['enabled'] = ! ($this->headers[$index]['enabled'] ?? true);
         }
     }
 
     #[Renderless]
     public function addQueryParam(): void
     {
-        $this->queryParams[] = ['key' => '', 'value' => ''];
+        $this->queryParams[] = ['key' => '', 'value' => '', 'enabled' => true];
     }
 
     #[Renderless]
@@ -311,7 +321,15 @@ new class extends Component
         $this->queryParams = array_values($this->queryParams);
 
         if (empty($this->queryParams)) {
-            $this->queryParams = [['key' => '', 'value' => '']];
+            $this->queryParams = [['key' => '', 'value' => '', 'enabled' => true]];
+        }
+    }
+
+    #[Renderless]
+    public function toggleQueryParam(int $index): void
+    {
+        if (isset($this->queryParams[$index])) {
+            $this->queryParams[$index]['enabled'] = ! ($this->queryParams[$index]['enabled'] ?? true);
         }
     }
 
@@ -365,20 +383,20 @@ new class extends Component
             // Substitute variables in URL
             $url = $substitutionService->substitute($this->url, $collectionId);
 
-            // Build headers array with variable substitution
+            // Build headers array with variable substitution (skip disabled)
             $headers = [];
             foreach ($this->headers as $header) {
-                if (! empty($header['key'])) {
+                if (! empty($header['key']) && ($header['enabled'] ?? true)) {
                     $key = $substitutionService->substitute($header['key'], $collectionId);
                     $value = $substitutionService->substitute($header['value'], $collectionId);
                     $headers[$key] = $value;
                 }
             }
 
-            // Build query params array with variable substitution
+            // Build query params array with variable substitution (skip disabled)
             $queryParams = [];
             foreach ($this->queryParams as $param) {
-                if (! empty($param['key'])) {
+                if (! empty($param['key']) && ($param['enabled'] ?? true)) {
                     $key = $substitutionService->substitute($param['key'], $collectionId);
                     $value = $substitutionService->substitute($param['value'], $collectionId);
                     $queryParams[$key] = $value;
@@ -505,21 +523,17 @@ new class extends Component
             return;
         }
 
-        // Convert headers to associative array
-        $headersArray = [];
-        foreach ($this->headers as $header) {
-            if (! empty($header['key'])) {
-                $headersArray[$header['key']] = $header['value'];
-            }
-        }
+        // Save headers as structured array (preserving enabled state)
+        $headersArray = array_values(array_filter(
+            $this->headers,
+            fn ($header) => ! empty($header['key']) || ! empty($header['value'])
+        ));
 
-        // Convert query params to associative array
-        $queryParamsArray = [];
-        foreach ($this->queryParams as $param) {
-            if (! empty($param['key'])) {
-                $queryParamsArray[$param['key']] = $param['value'];
-            }
-        }
+        // Save query params as structured array (preserving enabled state)
+        $queryParamsArray = array_values(array_filter(
+            $this->queryParams,
+            fn ($param) => ! empty($param['key']) || ! empty($param['value'])
+        ));
 
         $bodyToSave = $this->body;
         if (in_array($this->bodyType, ['form-data', 'urlencoded'])) {

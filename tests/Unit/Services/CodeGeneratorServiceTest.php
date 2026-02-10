@@ -312,6 +312,38 @@ describe('empty data handling', function () {
         expect($result)->not->toContain('?')->not->toContain('ignored');
     });
 
+    it('skips disabled headers', function () {
+        $result = $this->service->generate('curl', baseRequestData([
+            'headers' => [
+                ['key' => 'Active', 'value' => 'yes', 'enabled' => true],
+                ['key' => 'Disabled', 'value' => 'no', 'enabled' => false],
+            ],
+        ]));
+
+        expect($result)->toContain('Active: yes')->not->toContain('Disabled');
+    });
+
+    it('skips disabled query params', function () {
+        $result = $this->service->generate('curl', baseRequestData([
+            'queryParams' => [
+                ['key' => 'active', 'value' => '1', 'enabled' => true],
+                ['key' => 'disabled', 'value' => '0', 'enabled' => false],
+            ],
+        ]));
+
+        expect($result)->toContain('active=1')->not->toContain('disabled');
+    });
+
+    it('treats headers without enabled key as enabled', function () {
+        $result = $this->service->generate('curl', baseRequestData([
+            'headers' => [
+                ['key' => 'Legacy', 'value' => 'header'],
+            ],
+        ]));
+
+        expect($result)->toContain('Legacy: header');
+    });
+
     it('returns no body when body is empty', function () {
         $result = $this->service->generate('curl', baseRequestData([
             'method' => 'POST',
