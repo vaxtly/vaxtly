@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.17] - 2026-02-10
+
+### Added
+- Vault auto-sync on start: automatically pulls vault environments when the app loads
+- Auto-sync on start toggle in Vault settings UI
+- Vault `verify_ssl` and `auto_sync` settings included in data export/import
+
+### Changed
+- Both remote and vault auto-sync default to enabled for new workspaces
+
 ## [0.1.16] - 2026-02-09
 
 ### Added
