@@ -132,3 +132,105 @@ jobs:
             nativephp/electron/dist/*.dmg
             nativephp/electron/dist/*.zip
           retention-days: 30
+
+  update-homebrew:
+    needs: build
+    runs-on: ubuntu-latest
+    name: Update Homebrew tap
+    steps:
+      - name: Wait for release assets
+        shell: bash
+        run: |
+          VERSION="${{ inputs.version }}"
+          VERSION="${VERSION#v}"
+          for i in $(seq 1 30); do
+            ARM64=$(curl -sL -o /dev/null -w '%{http_code}' "https://github.com/vaxtly/vaxtly/releases/download/v${VERSION}/Vaxtly-${VERSION}-arm64.dmg")
+            X64=$(curl -sL -o /dev/null -w '%{http_code}' "https://github.com/vaxtly/vaxtly/releases/download/v${VERSION}/Vaxtly-${VERSION}-x64.dmg")
+            if [[ "$ARM64" == "200" && "$X64" == "200" ]]; then
+              echo "Both DMGs available"
+              break
+            fi
+            echo "Waiting for release assets... (attempt $i)"
+            sleep 10
+          done
+
+      - name: Compute SHA256 hashes
+        id: hashes
+        shell: bash
+        run: |
+          VERSION="${{ inputs.version }}"
+          VERSION="${VERSION#v}"
+          SHA_ARM64=$(curl -sL "https://github.com/vaxtly/vaxtly/releases/download/v${VERSION}/Vaxtly-${VERSION}-arm64.dmg" | sha256sum | awk '{print $1}')
+          SHA_X64=$(curl -sL "https://github.com/vaxtly/vaxtly/releases/download/v${VERSION}/Vaxtly-${VERSION}-x64.dmg" | sha256sum | awk '{print $1}')
+          echo "sha_arm64=$SHA_ARM64" >> "$GITHUB_OUTPUT"
+          echo "sha_x64=$SHA_X64" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Update cask formula
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          VERSION="${{ steps.hashes.outputs.version }}"
+          SHA_ARM64="${{ steps.hashes.outputs.sha_arm64 }}"
+          SHA_X64="${{ steps.hashes.outputs.sha_x64 }}"
+
+          CASK_CONTENT=$(cat <<'RUBY'
+          cask "vaxtly" do
+            version "VERSION_PLACEHOLDER"
+
+            on_arm do
+              sha256 "SHA_ARM64_PLACEHOLDER"
+              url "https://github.com/vaxtly/vaxtly/releases/download/v#{version}/Vaxtly-#{version}-arm64.dmg"
+            end
+
+            on_intel do
+              sha256 "SHA_X64_PLACEHOLDER"
+              url "https://github.com/vaxtly/vaxtly/releases/download/v#{version}/Vaxtly-#{version}-x64.dmg"
+            end
+
+            name "Vaxtly"
+            desc "API testing tool"
+            homepage "https://vaxtly.github.io"
+
+            app "Vaxtly.app"
+
+            zap trash: [
+              "~/Library/Application Support/Vaxtly",
+              "~/Library/Preferences/com.vaxtly.app.plist",
+              "~/Library/Saved Application State/com.vaxtly.app.savedState",
+            ]
+          end
+          RUBY
+          )
+
+          CASK_CONTENT="${CASK_CONTENT//VERSION_PLACEHOLDER/$VERSION}"
+          CASK_CONTENT="${CASK_CONTENT//SHA_ARM64_PLACEHOLDER/$SHA_ARM64}"
+          CASK_CONTENT="${CASK_CONTENT//SHA_X64_PLACEHOLDER/$SHA_X64}"
+
+          # Remove leading whitespace from heredoc
+          CASK_CONTENT=$(echo "$CASK_CONTENT" | sed 's/^          //')
+
+          # Get current file SHA for update
+          FILE_SHA=$(gh api repos/vaxtly/homebrew-tap/contents/Casks/vaxtly.rb --jq '.sha' 2>/dev/null || echo "")
+
+          ENCODED=$(echo "$CASK_CONTENT" | base64 -w0)
+
+          if [[ -n "$FILE_SHA" ]]; then
+            gh api repos/vaxtly/homebrew-tap/contents/Casks/vaxtly.rb \
+              -X PUT \
+              -f message="Update Vaxtly to v${VERSION}" \
+              -f committer[name]="vaxtly" \
+              -f committer[email]="vaxtly.app@gmail.com" \
+              -f content="$ENCODED" \
+              -f sha="$FILE_SHA"
+          else
+            gh api repos/vaxtly/homebrew-tap/contents/Casks/vaxtly.rb \
+              -X PUT \
+              -f message="Update Vaxtly to v${VERSION}" \
+              -f committer[name]="vaxtly" \
+              -f committer[email]="vaxtly.app@gmail.com" \
+              -f content="$ENCODED"
+          fi
+
+          echo "Homebrew tap updated to v${VERSION}"
