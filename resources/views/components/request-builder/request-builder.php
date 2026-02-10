@@ -462,6 +462,8 @@ new class extends Component
                 'url' => $url,
                 'headers' => $headers,
                 'timeout' => (int) get_setting('requests.timeout', 30),
+                'verify_ssl' => (bool) get_setting('requests.verify_ssl', false),
+                'follow_redirects' => (bool) get_setting('requests.follow_redirects', true),
                 'options' => $options,
             ];
         } catch (\Exception $e) {

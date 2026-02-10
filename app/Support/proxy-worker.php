@@ -32,11 +32,12 @@ foreach ($candidates as $path) {
     }
 }
 
+$verifySsl = ! empty($config['verify_ssl']);
 $ssl = [
-    'verify_peer' => true,
-    'verify_peer_name' => true,
+    'verify_peer' => $verifySsl,
+    'verify_peer_name' => $verifySsl,
 ];
-if ($cafile) {
+if ($verifySsl && $cafile) {
     $ssl['cafile'] = $cafile;
 }
 
@@ -47,8 +48,8 @@ $context = stream_context_create([
         'content' => $config['body'] ?? '',
         'timeout' => $config['timeout'] ?? 30,
         'ignore_errors' => true,
-        'follow_location' => 1,
-        'max_redirects' => 5,
+        'follow_location' => ($config['follow_redirects'] ?? true) ? 1 : 0,
+        'max_redirects' => ($config['follow_redirects'] ?? true) ? 5 : 0,
     ],
     'ssl' => $ssl,
 ]);

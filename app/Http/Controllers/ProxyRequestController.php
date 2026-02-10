@@ -14,6 +14,8 @@ class ProxyRequestController extends Controller
             'url' => 'required|string',
             'headers' => 'nullable|array',
             'timeout' => 'nullable|integer|min:1|max:300',
+            'verify_ssl' => 'nullable|boolean',
+            'follow_redirects' => 'nullable|boolean',
             'options' => 'nullable|array',
         ]);
 
@@ -45,6 +47,8 @@ class ProxyRequestController extends Controller
             'headers' => $headers,
             'body' => $body,
             'timeout' => $timeout,
+            'verify_ssl' => $validated['verify_ssl'] ?? false,
+            'follow_redirects' => $validated['follow_redirects'] ?? true,
         ];
 
         $process = new Process([PHP_BINARY, base_path('app/Support/proxy-worker.php')]);

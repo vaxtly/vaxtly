@@ -23,6 +23,10 @@ new class extends Component
 
     public int $timeout = 30;
 
+    public bool $verifySsl = false;
+
+    public bool $followRedirects = true;
+
     public string $activeTab = 'general';
 
     #[Validate('required|file|mimes:json,zip|max:10240')]
@@ -95,6 +99,8 @@ new class extends Component
     {
         $this->layout = get_setting('requests.layout', 'columns');
         $this->timeout = (int) get_setting('requests.timeout', 30);
+        $this->verifySsl = (bool) get_setting('requests.verify_ssl', false);
+        $this->followRedirects = (bool) get_setting('requests.follow_redirects', true);
         $this->loadRemoteSettings();
         $this->loadVaultSettings();
     }
@@ -135,6 +141,16 @@ new class extends Component
     {
         $this->timeout = max(1, min(300, (int) $value));
         set_setting('requests.timeout', $this->timeout);
+    }
+
+    public function updatedVerifySsl($value): void
+    {
+        set_setting('requests.verify_ssl', (bool) $value);
+    }
+
+    public function updatedFollowRedirects($value): void
+    {
+        set_setting('requests.follow_redirects', (bool) $value);
     }
 
     #[On('open-settings')]

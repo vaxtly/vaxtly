@@ -49,6 +49,30 @@
     {{-- Divider --}}
     <div class="border-t border-gray-200 dark:border-gray-700"></div>
 
+    {{-- Verify SSL --}}
+    <div class="flex items-center justify-between">
+        <div>
+            <p class="text-sm font-medium text-gray-900 dark:text-white">Verify SSL</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Verify SSL certificates for requests</p>
+        </div>
+        <x-beartropy-ui::toggle wire:model.live="verifySsl" />
+    </div>
+
+    {{-- Divider --}}
+    <div class="border-t border-gray-200 dark:border-gray-700"></div>
+
+    {{-- Follow Redirects --}}
+    <div class="flex items-center justify-between">
+        <div>
+            <p class="text-sm font-medium text-gray-900 dark:text-white">Follow Redirects</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Automatically follow HTTP redirects</p>
+        </div>
+        <x-beartropy-ui::toggle wire:model.live="followRedirects" />
+    </div>
+
+    {{-- Divider --}}
+    <div class="border-t border-gray-200 dark:border-gray-700"></div>
+
     {{-- App Info --}}
     <div>
         <p class="text-sm font-medium text-gray-900 dark:text-white">About</p>
