@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\BootLogger;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
@@ -52,14 +53,21 @@ class EncryptionService
         }
 
         if (! config('nativephp-internal.running')) {
+            BootLogger::log('EncryptionService: not running in NativePHP, native=false');
+
             return $this->useNative = false;
         }
 
         try {
+            BootLogger::log('EncryptionService: checking native encryption...');
             $response = $this->nativeApiCall('get', 'system/can-encrypt');
+            $result = (bool) $response?->json('result');
+            BootLogger::log('EncryptionService: native check = '.($result ? 'true' : 'false'));
 
-            return $this->useNative = (bool) $response?->json('result');
+            return $this->useNative = $result;
         } catch (\Throwable) {
+            BootLogger::log('EncryptionService: native check failed, native=false');
+
             return $this->useNative = false;
         }
     }

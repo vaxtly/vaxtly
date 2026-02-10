@@ -6,6 +6,7 @@ use App\Models\Folder;
 use App\Models\Request;
 use App\Services\RemoteSyncService;
 use App\Services\WorkspaceService;
+use App\Support\BootLogger;
 use Beartropy\Ui\Traits\HasToasts;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Computed;
@@ -38,14 +39,22 @@ new class extends Component
 
     public function mount(): void
     {
+        BootLogger::log('api-tester: mount() started');
+
         $this->activeWorkspaceId = app(WorkspaceService::class)->activeId();
+
         $this->loadCollections();
+        BootLogger::log('api-tester: loadCollections done');
+
         $this->restoreTabs();
+        BootLogger::log('api-tester: restoreTabs done');
 
         if (! get_setting('app.welcome_shown', false)) {
             $this->showWelcomeModal = true;
             set_setting('app.welcome_shown', true);
         }
+
+        BootLogger::log('api-tester: mount() complete');
     }
 
     private function restoreTabs(): void

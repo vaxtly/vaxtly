@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.24] - 2026-02-10
+
+### Added
+- Boot performance debug logger (`storage/logs/boot.log`) with timestamped entries when `APP_DEBUG=true`
+
+### Changed
+- Optimized auto-migration check: compares on-disk file count against cached setting instead of querying the database on every request
+
 ## [0.1.23] - 2026-02-10
 
 ### Added

@@ -11,6 +11,7 @@ use App\Services\SensitiveDataScanner;
 use App\Services\SessionLogService;
 use App\Services\VaultSyncService;
 use App\Services\WorkspaceService;
+use App\Support\BootLogger;
 use App\Traits\HttpColorHelper;
 use Beartropy\Ui\Traits\HasToasts;
 use Illuminate\Support\Facades\DB;
@@ -87,6 +88,8 @@ new class extends Component
 
     public function mount(): void
     {
+        BootLogger::log('sidebar: mount() started');
+
         $this->activeWorkspaceId = app(WorkspaceService::class)->activeId();
 
         // Initialize sort based on current mode
@@ -104,11 +107,15 @@ new class extends Component
                 }
             }
 
+            BootLogger::log('sidebar: collections loaded, expanded='.count($this->expandedCollections));
+
             $this->expandedFolders = array_fill_keys(
                 $ws->getSetting('ui.expanded_folders', []),
                 true
             );
         }
+
+        BootLogger::log('sidebar: mount() complete');
     }
 
     #[Renderless]
