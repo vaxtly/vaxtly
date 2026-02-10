@@ -266,6 +266,6 @@ class GitLabProvider implements GitProviderInterface
     {
         return Http::withHeaders([
             'PRIVATE-TOKEN' => $this->token,
-        ])->timeout(30);
+        ])->connectTimeout(5)->timeout(30);
     }
 }

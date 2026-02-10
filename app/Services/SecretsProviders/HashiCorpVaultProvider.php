@@ -121,7 +121,7 @@ class HashiCorpVaultProvider implements SecretsProviderInterface
         }
 
         // For AppRole, test the login endpoint with namespace if configured
-        $request = Http::timeout(30);
+        $request = Http::connectTimeout(5)->timeout(30);
 
         if (! $this->verifySsl) {
             $request = $request->withoutVerifying();
@@ -143,7 +143,7 @@ class HashiCorpVaultProvider implements SecretsProviderInterface
 
     private function loginWithAppRole(): string
     {
-        $request = Http::timeout(30);
+        $request = Http::connectTimeout(5)->timeout(30);
 
         if (! $this->verifySsl) {
             $request = $request->withoutVerifying();
@@ -176,7 +176,7 @@ class HashiCorpVaultProvider implements SecretsProviderInterface
     {
         $request = Http::withHeaders([
             'X-Vault-Token' => $this->token,
-        ])->timeout(30);
+        ])->connectTimeout(5)->timeout(30);
 
         if (! $this->verifySsl) {
             $request = $request->withoutVerifying();

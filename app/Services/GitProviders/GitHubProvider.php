@@ -309,6 +309,6 @@ class GitHubProvider implements GitProviderInterface
             'Authorization' => "Bearer {$this->token}",
             'Accept' => 'application/vnd.github.v3+json',
             'X-GitHub-Api-Version' => '2022-11-28',
-        ])->timeout(30);
+        ])->connectTimeout(5)->timeout(30);
     }
 }
