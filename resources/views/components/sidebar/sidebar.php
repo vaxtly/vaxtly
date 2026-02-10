@@ -140,13 +140,6 @@ new class extends Component
     {
         $this->mode = $mode;
         $this->updateSortForMode();
-
-        // Dispatch event for parent if needed (mirroring previous behavior)
-        if ($mode === 'collections') {
-            $this->dispatch('switch-to-collections');
-        } else {
-            $this->dispatch('switch-to-environments');
-        }
     }
 
     protected function updateSortForMode(): void
@@ -1086,14 +1079,14 @@ new class extends Component
 
         $this->selectedEnvironmentId = $environment->id;
         $this->dispatch('environments-updated');
-        $this->dispatch('environment-selected', environmentId: $environment->id);
+        $this->dispatch('open-environment-tab', environmentId: $environment->id);
         $this->startEditing($environment->id);
     }
 
     public function selectEnvironment(string $environmentId): void
     {
         $this->selectedEnvironmentId = $environmentId;
-        $this->dispatch('environment-selected', environmentId: $environmentId);
+        $this->dispatch('open-environment-tab', environmentId: $environmentId);
     }
 
     public function toggleActive(string $environmentId): void

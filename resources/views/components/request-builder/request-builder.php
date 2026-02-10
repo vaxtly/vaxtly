@@ -117,11 +117,16 @@ new class extends Component
 
     #[On('switch-tab')]
     #[Renderless]
-    public function switchTab(string $tabId, string $requestId): void
+    public function switchTab(string $tabId, string $type = 'request', ?string $requestId = null, ?string $environmentId = null): void
     {
-        // Save current tab state
+        // Save current tab state before switching away
         if ($this->activeTabId && $this->requestId) {
             $this->tabStates[$this->activeTabId] = $this->getCurrentState();
+        }
+
+        // Not a request tab — nothing more to do here
+        if ($type !== 'request') {
+            return;
         }
 
         $this->activeTabId = $tabId;

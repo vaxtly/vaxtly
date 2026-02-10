@@ -9,6 +9,10 @@ new class extends Component
 {
     public ?string $environmentId = null;
 
+    public ?string $activeTabId = null;
+
+    public array $tabStates = [];
+
     public string $name = '';
 
     /**
@@ -24,11 +28,9 @@ new class extends Component
 
     public string $vaultError = '';
 
-    public function mount(?string $environmentId = null): void
+    public function mount(): void
     {
-        if ($environmentId) {
-            $this->loadEnvironment($environmentId);
-        }
+        //
     }
 
     #[On('workspace-switched')]
@@ -43,7 +45,55 @@ new class extends Component
         $this->vaultError = '';
     }
 
-    #[On('environment-selected')]
+    #[On('switch-tab')]
+    public function switchTab(string $tabId, string $type = 'request', ?string $requestId = null, ?string $environmentId = null): void
+    {
+        // Save current tab state before switching away
+        if ($this->activeTabId && $this->environmentId) {
+            $this->tabStates[$this->activeTabId] = $this->getCurrentState();
+        }
+
+        // Not an environment tab — nothing more to do here
+        if ($type !== 'environment' || ! $environmentId) {
+            return;
+        }
+
+        $this->activeTabId = $tabId;
+
+        // Check if we have cached state for this tab
+        if (isset($this->tabStates[$tabId])) {
+            $this->restoreState($this->tabStates[$tabId]);
+        } else {
+            $this->loadEnvironment($environmentId);
+        }
+    }
+
+    #[On('close-tab')]
+    public function closeTab(string $tabId): void
+    {
+        unset($this->tabStates[$tabId]);
+    }
+
+    private function getCurrentState(): array
+    {
+        return [
+            'environmentId' => $this->environmentId,
+            'name' => $this->name,
+            'originalName' => $this->originalName,
+            'variables' => $this->variables,
+            'isActive' => $this->isActive,
+            'isVaultSynced' => $this->isVaultSynced,
+            'vaultError' => $this->vaultError,
+        ];
+    }
+
+    private function restoreState(array $state): void
+    {
+        foreach ($state as $key => $value) {
+            $this->$key = $value;
+        }
+    }
+
     public function loadEnvironment(string $environmentId): void
     {
         $environment = Environment::find($environmentId);
@@ -179,6 +229,7 @@ new class extends Component
         }
 
         $this->dispatch('environments-updated');
+        $this->dispatch('environment-name-updated', environmentId: $this->environmentId, name: $this->name);
     }
 
     public function refreshFromVault(): void

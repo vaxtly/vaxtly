@@ -16,14 +16,23 @@
     <div class="flex items-end gap-1 overflow-x-auto overflow-y-hidden beartropy-thin-scrollbar min-w-0 flex-1 pt-1.5" wire:ignore>
         <template x-for="tab in $wire.openTabs" :key="tab.id">
             <div
-                @click="Livewire.dispatch('switch-tab', { tabId: tab.id, requestId: tab.requestId })"
+                @click="Livewire.dispatch('switch-tab', { tabId: tab.id, type: tab.type || 'request', requestId: tab.requestId || null, environmentId: tab.environmentId || null })"
                 @auxclick.prevent="if ($event.button === 1) $wire.closeTab(tab.id)"
                 class="group relative flex items-center gap-2 px-3 py-2 text-xs font-medium cursor-pointer transition-all rounded-t-lg select-none mr-1 min-w-30 max-w-50 border-t border-l border-r"
                 :class="$wire.activeTabId === tab.id
                     ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-200 dark:border-gray-700 shadow-sm z-10 -mb-px pb-2.5'
                     : 'bg-transparent border-gray-200/50 dark:border-gray-700/50 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-200/50 dark:hover:bg-gray-800/50'"
             >
-                <span class="font-mono font-bold tracking-tighter" :class="methodColor(tab.method)" x-text="(tab.method || '').toUpperCase()"></span>
+                <template x-if="(tab.type || 'request') === 'request'">
+                    <span class="font-mono font-bold tracking-tighter" :class="methodColor(tab.method)" x-text="(tab.method || '').toUpperCase()"></span>
+                </template>
+                <template x-if="tab.type === 'environment'">
+                    <span class="text-purple-500 dark:text-purple-400 flex items-center">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                        </svg>
+                    </span>
+                </template>
 
                 <span class="truncate flex-1" :class="$wire.activeTabId === tab.id ? 'font-semibold' : ''" x-text="tab.name || 'Untitled'"></span>
 

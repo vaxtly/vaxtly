@@ -25,10 +25,6 @@ new class extends Component
 
     public $selectedRequestId = null;
 
-    public string $viewMode = 'collections';
-
-    public ?string $selectedEnvironmentId = null;
-
     public array $openTabs = [];
 
     public ?string $activeTabId = null;
@@ -65,12 +61,27 @@ new class extends Component
             return;
         }
 
-        // Validate that referenced requests still exist
-        $requestIds = collect($savedTabs)->pluck('requestId')->all();
-        $existingIds = Request::whereIn('id', $requestIds)->pluck('id')->all();
+        // Normalize missing type field (backward compat)
+        $savedTabs = collect($savedTabs)->map(function ($tab) {
+            $tab['type'] = $tab['type'] ?? 'request';
 
-        $this->openTabs = collect($savedTabs)
-            ->filter(fn ($tab) => in_array($tab['requestId'], $existingIds))
+            return $tab;
+        });
+
+        // Validate request tabs
+        $requestIds = $savedTabs->where('type', 'request')->pluck('requestId')->filter()->all();
+        $existingRequestIds = ! empty($requestIds) ? Request::whereIn('id', $requestIds)->pluck('id')->all() : [];
+
+        // Validate environment tabs
+        $environmentIds = $savedTabs->where('type', 'environment')->pluck('environmentId')->filter()->all();
+        $existingEnvironmentIds = ! empty($environmentIds) ? Environment::whereIn('id', $environmentIds)->pluck('id')->all() : [];
+
+        $this->openTabs = $savedTabs
+            ->filter(function ($tab) use ($existingRequestIds, $existingEnvironmentIds) {
+                return $tab['type'] === 'request'
+                    ? in_array($tab['requestId'] ?? null, $existingRequestIds)
+                    : in_array($tab['environmentId'] ?? null, $existingEnvironmentIds);
+            })
             ->values()
             ->all();
 
@@ -85,10 +96,20 @@ new class extends Component
             $this->activeTabId = $this->openTabs[0]['id'];
         }
 
-        // Dispatch switch-tab so request-builder loads the active request
+        // Dispatch switch-tab so the appropriate component loads
         $tab = collect($this->openTabs)->firstWhere('id', $this->activeTabId);
-        $this->autoActivateEnvironment($tab['collectionId'] ?? null, $tab['folderId'] ?? null);
-        $this->dispatch('switch-tab', tabId: $this->activeTabId, requestId: $tab['requestId']);
+        $type = $tab['type'] ?? 'request';
+
+        if ($type === 'request') {
+            $this->autoActivateEnvironment($tab['collectionId'] ?? null, $tab['folderId'] ?? null);
+        }
+
+        $this->dispatch('switch-tab',
+            tabId: $this->activeTabId,
+            type: $type,
+            requestId: $tab['requestId'] ?? null,
+            environmentId: $tab['environmentId'] ?? null,
+        );
     }
 
     private function autoSyncOnStart(): void
@@ -223,23 +244,6 @@ new class extends Component
         return $tab['folderId'] ?? null;
     }
 
-    public function toggleViewMode(): void
-    {
-        $this->viewMode = $this->viewMode === 'collections' ? 'environments' : 'collections';
-    }
-
-    #[On('switch-to-environments')]
-    public function switchToEnvironments(): void
-    {
-        $this->viewMode = 'environments';
-    }
-
-    #[On('switch-to-collections')]
-    public function switchToCollections(): void
-    {
-        $this->viewMode = 'collections';
-    }
-
     public function loadCollections(): void
     {
         $this->collections = Collection::with('requests')->forWorkspace($this->activeWorkspaceId)->ordered()->get();
@@ -252,16 +256,43 @@ new class extends Component
         $this->loadCollections();
     }
 
-    #[On('environment-selected')]
-    public function onEnvironmentSelected(string $environmentId): void
-    {
-        $this->selectedEnvironmentId = $environmentId;
-    }
-
     #[On('environments-updated')]
     public function refreshEnvironments(): void
     {
         unset($this->environments, $this->activeEnvironmentId);
+
+        // Close tabs whose environment was deleted
+        $existingEnvIds = Environment::forWorkspace($this->activeWorkspaceId)->pluck('id')->all();
+        $closedActive = false;
+
+        $this->openTabs = collect($this->openTabs)
+            ->filter(function ($tab) use ($existingEnvIds, &$closedActive) {
+                if (($tab['type'] ?? 'request') === 'environment' && ! in_array($tab['environmentId'], $existingEnvIds)) {
+                    if ($tab['id'] === $this->activeTabId) {
+                        $closedActive = true;
+                    }
+
+                    return false;
+                }
+
+                return true;
+            })
+            ->values()
+            ->all();
+
+        if ($closedActive) {
+            $newActive = $this->openTabs[0] ?? null;
+            $this->activeTabId = $newActive['id'] ?? null;
+            if ($newActive) {
+                $type = $newActive['type'] ?? 'request';
+                $this->dispatch('switch-tab',
+                    tabId: $newActive['id'],
+                    type: $type,
+                    requestId: $newActive['requestId'] ?? null,
+                    environmentId: $newActive['environmentId'] ?? null,
+                );
+            }
+        }
     }
 
     public function toggleEnvLock(): void
@@ -358,7 +389,7 @@ new class extends Component
         if ($existing) {
             $this->activeTabId = $existing['id'];
             $this->autoActivateEnvironment($existing['collectionId'] ?? null, $existing['folderId'] ?? null);
-            $this->dispatch('switch-tab', tabId: $existing['id'], requestId: $requestId);
+            $this->dispatch('switch-tab', tabId: $existing['id'], type: 'request', requestId: $requestId);
 
             return;
         }
@@ -372,6 +403,7 @@ new class extends Component
         $tabId = (string) Str::uuid();
         $this->openTabs[] = [
             'id' => $tabId,
+            'type' => 'request',
             'requestId' => $requestId,
             'collectionId' => $request->collection_id,
             'folderId' => $request->folder_id,
@@ -380,15 +412,44 @@ new class extends Component
         ];
         $this->activeTabId = $tabId;
         $this->autoActivateEnvironment($request->collection_id, $request->folder_id);
-        $this->dispatch('switch-tab', tabId: $tabId, requestId: $requestId);
+        $this->dispatch('switch-tab', tabId: $tabId, type: 'request', requestId: $requestId);
+    }
+
+    #[On('open-environment-tab')]
+    #[Renderless]
+    public function openEnvironmentTab(string $environmentId): void
+    {
+        // Deduplicate by environmentId
+        $existing = collect($this->openTabs)->first(fn ($t) => ($t['type'] ?? 'request') === 'environment' && ($t['environmentId'] ?? null) === $environmentId);
+        if ($existing) {
+            $this->activeTabId = $existing['id'];
+            $this->dispatch('switch-tab', tabId: $existing['id'], type: 'environment', environmentId: $environmentId);
+
+            return;
+        }
+
+        $environment = Environment::find($environmentId);
+        if (! $environment) {
+            return;
+        }
+
+        $tabId = (string) Str::uuid();
+        $this->openTabs[] = [
+            'id' => $tabId,
+            'type' => 'environment',
+            'environmentId' => $environmentId,
+            'name' => $environment->name,
+        ];
+        $this->activeTabId = $tabId;
+        $this->dispatch('switch-tab', tabId: $tabId, type: 'environment', environmentId: $environmentId);
     }
 
     #[On('switch-tab')]
     #[Renderless]
-    public function onSwitchTab(string $tabId, string $requestId): void
+    public function onSwitchTab(string $tabId, string $type = 'request', ?string $requestId = null, ?string $environmentId = null): void
     {
-        // openTab() already set activeTabId and called autoActivateEnvironment,
-        // skip redundant work when it dispatched switch-tab in the same request.
+        // openTab()/openEnvironmentTab() already set activeTabId,
+        // skip redundant work when they dispatched switch-tab in the same request.
         if ($this->activeTabId === $tabId) {
             return;
         }
@@ -396,7 +457,10 @@ new class extends Component
         $tab = collect($this->openTabs)->firstWhere('id', $tabId);
         if ($tab) {
             $this->activeTabId = $tabId;
-            $this->autoActivateEnvironment($tab['collectionId'] ?? null, $tab['folderId'] ?? null);
+
+            if (($tab['type'] ?? 'request') === 'request') {
+                $this->autoActivateEnvironment($tab['collectionId'] ?? null, $tab['folderId'] ?? null);
+            }
         }
     }
 
@@ -413,7 +477,13 @@ new class extends Component
                 $newActive = $this->openTabs[$index] ?? $this->openTabs[$index - 1] ?? null;
                 $this->activeTabId = $newActive['id'] ?? null;
                 if ($newActive) {
-                    $this->dispatch('switch-tab', tabId: $newActive['id'], requestId: $newActive['requestId']);
+                    $type = $newActive['type'] ?? 'request';
+                    $this->dispatch('switch-tab',
+                        tabId: $newActive['id'],
+                        type: $type,
+                        requestId: $newActive['requestId'] ?? null,
+                        environmentId: $newActive['environmentId'] ?? null,
+                    );
                 }
             }
         }
@@ -424,12 +494,32 @@ new class extends Component
     public function updateTabName(string $requestId, string $name, string $method): void
     {
         foreach ($this->openTabs as &$tab) {
-            if ($tab['requestId'] === $requestId) {
+            if (($tab['type'] ?? 'request') === 'request' && $tab['requestId'] === $requestId) {
                 $tab['name'] = $name;
                 $tab['method'] = $method;
                 break;
             }
         }
+    }
+
+    #[On('environment-name-updated')]
+    #[Renderless]
+    public function updateEnvironmentTabName(string $environmentId, string $name): void
+    {
+        foreach ($this->openTabs as &$tab) {
+            if (($tab['type'] ?? 'request') === 'environment' && ($tab['environmentId'] ?? null) === $environmentId) {
+                $tab['name'] = $name;
+                break;
+            }
+        }
+    }
+
+    #[Computed]
+    public function activeTabType(): string
+    {
+        $tab = collect($this->openTabs)->firstWhere('id', $this->activeTabId);
+
+        return $tab['type'] ?? 'request';
     }
 
     public function autoActivateEnvironment(?string $collectionId, ?string $folderId = null): void
@@ -475,7 +565,6 @@ new class extends Component
         $this->activeTabId = null;
         $this->selectedCollectionId = null;
         $this->selectedRequestId = null;
-        $this->selectedEnvironmentId = null;
         $this->envLocked = false;
         $this->loadCollections();
         unset($this->environments, $this->activeEnvironmentId);
