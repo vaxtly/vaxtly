@@ -1,7 +1,9 @@
-@forelse($this->filteredEnvironments as $environment)
+@foreach($this->getEnvironments() as $environment)
     <div
         wire:key="environment-{{ $environment->id }}"
         wire:click="selectEnvironment('{{ $environment->id }}')"
+        data-search-text="{{ strtolower($environment->name) }}"
+        x-show="!search || $el.dataset.searchText.includes(search.toLowerCase())"
         class="group flex items-center justify-between px-2 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors {{ $selectedEnvironmentId === $environment->id ? 'bg-blue-50 dark:bg-blue-900/30' : '' }}"
     >
         <div class="flex items-center gap-2 min-w-0 flex-1">
@@ -50,13 +52,20 @@
             ])
         </div>
     </div>
-@empty
+@endforeach
+
+@if($this->getEnvironments()->isEmpty())
     <div class="text-center text-gray-400 dark:text-gray-500 py-6">
-        @if($search)
-            <p class="text-xs">No results for "{{ $search }}"</p>
-        @else
-            <p class="text-xs">No environments yet</p>
-            <p class="text-[10px] mt-1">Click + to create one</p>
-        @endif
+        <p class="text-xs">No environments yet</p>
+        <p class="text-[10px] mt-1">Click + to create one</p>
     </div>
-@endforelse
+@endif
+
+{{-- Alpine-driven "no results" message --}}
+<div
+    x-show="search && ![...$el.parentElement.querySelectorAll('[data-search-text]')].some(el => el.dataset.searchText.includes(search.toLowerCase()))"
+    x-cloak
+    class="text-center text-gray-400 dark:text-gray-500 py-6"
+>
+    <p class="text-xs">No results</p>
+</div>

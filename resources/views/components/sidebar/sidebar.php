@@ -31,8 +31,6 @@ new class extends Component
     public string $sort = 'manual';
 
     // Shared properties
-    public string $search = '';
-
     public ?string $editingId = null;
 
     public string $editingName = '';
@@ -216,80 +214,35 @@ new class extends Component
         // Re-render will fetch fresh data
     }
 
-    // Computed properties for filtered lists
-    #[Computed]
-    public function items()
+    /**
+     * Build a searchable text string for client-side filtering.
+     */
+    public function buildSearchableText(Collection $collection): string
     {
-        return $this->mode === 'collections'
-            ? $this->filteredCollections()
-            : $this->filteredEnvironments();
-    }
+        $parts = [strtolower($collection->name)];
 
-    #[Computed]
-    public function filteredCollections()
-    {
-        $collections = $this->getCollections();
-
-        if (empty($this->search)) {
-            return $collections;
+        foreach ($collection->rootRequests as $request) {
+            $parts[] = strtolower($request->name);
+            $parts[] = strtolower($request->url ?? '');
         }
 
-        $search = strtolower($this->search);
+        $this->appendFolderSearchText($collection->rootFolders, $parts);
 
-        return $collections->filter(function ($collection) use ($search) {
-            if (str_contains(strtolower($collection->name), $search)) {
-                return true;
-            }
-
-            // Check root requests
-            foreach ($collection->rootRequests as $request) {
-                if (str_contains(strtolower($request->name), $search) ||
-                    str_contains(strtolower($request->url ?? ''), $search)) {
-                    return true;
-                }
-            }
-
-            // Check folders recursively
-            return $this->folderMatchesSearch($collection->rootFolders, $search);
-        });
+        return implode(' ', array_filter($parts));
     }
 
-    private function folderMatchesSearch($folders, string $search): bool
+    protected function appendFolderSearchText($folders, array &$parts): void
     {
         foreach ($folders as $folder) {
-            if (str_contains(strtolower($folder->name), $search)) {
-                return true;
-            }
+            $parts[] = strtolower($folder->name);
 
             foreach ($folder->requests as $request) {
-                if (str_contains(strtolower($request->name), $search) ||
-                    str_contains(strtolower($request->url ?? ''), $search)) {
-                    return true;
-                }
+                $parts[] = strtolower($request->name);
+                $parts[] = strtolower($request->url ?? '');
             }
 
-            if ($this->folderMatchesSearch($folder->children, $search)) {
-                return true;
-            }
+            $this->appendFolderSearchText($folder->children, $parts);
         }
-
-        return false;
-    }
-
-    #[Computed]
-    public function filteredEnvironments()
-    {
-        $environments = $this->getEnvironments();
-
-        if (empty($this->search)) {
-            return $environments;
-        }
-
-        $search = strtolower($this->search);
-
-        return $environments->filter(function ($environment) use ($search) {
-            return str_contains(strtolower($environment->name), $search);
-        });
     }
 
     // Shared editing methods
@@ -612,24 +565,6 @@ new class extends Component
         $this->dispatchExpandedSync();
         $this->dispatch('collections-updated');
         $this->startEditing($collection->id);
-    }
-
-    public function toggleAllCollections(): void
-    {
-        $allExpanded = collect($this->filteredCollections)
-            ->every(fn ($c) => $this->expandedCollections[$c->id] ?? false);
-
-        if ($allExpanded) {
-            $this->expandedCollections = [];
-            $this->expandedFolders = [];
-        } else {
-            foreach ($this->filteredCollections as $collection) {
-                $this->expandedCollections[$collection->id] = true;
-            }
-        }
-
-        $this->persistExpandedState();
-        $this->dispatchExpandedSync();
     }
 
     public function createFolder(string $collectionId, ?string $parentId = null): void
@@ -1169,7 +1104,6 @@ new class extends Component
 
         app(WorkspaceService::class)->switchTo($workspaceId);
         $this->activeWorkspaceId = $workspaceId;
-        $this->search = '';
         $this->selectedEnvironmentId = null;
         $this->showWorkspaceDropdown = false;
 
@@ -1191,7 +1125,7 @@ new class extends Component
             }
         }
 
-        unset($this->workspaces, $this->activeWorkspace, $this->filteredCollections, $this->filteredEnvironments, $this->items);
+        unset($this->workspaces, $this->activeWorkspace);
 
         $this->dispatchExpandedSync();
         $this->dispatch('workspace-switched', workspaceId: $workspaceId);

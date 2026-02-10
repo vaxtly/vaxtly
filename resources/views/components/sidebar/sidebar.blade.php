@@ -2,6 +2,23 @@
     x-data="{
         expandedCollections: @js($expandedCollections),
         expandedFolders: @js($expandedFolders),
+        search: '',
+        get allExpanded() {
+            const collectionEls = this.$root.querySelectorAll('[data-collection-id]');
+            if (!collectionEls.length) return false;
+            return Array.from(collectionEls).every(el => this.expandedCollections[el.dataset.collectionId]);
+        },
+        toggleAllCollections() {
+            const collectionEls = this.$root.querySelectorAll('[data-collection-id]');
+            const ids = Array.from(collectionEls).map(el => el.dataset.collectionId);
+            if (this.allExpanded) {
+                this.expandedCollections = {};
+                this.expandedFolders = {};
+            } else {
+                ids.forEach(id => this.expandedCollections[id] = true);
+            }
+            this.persistExpanded();
+        },
         persistExpanded() {
             $wire.persistExpandedState(
                 Object.keys(this.expandedCollections).filter(k => this.expandedCollections[k]),
@@ -83,27 +100,20 @@
 
             <div class="flex items-center gap-0.5">
                 @if($mode === 'collections')
-                    @php
-                        $allExpanded = $this->filteredCollections->isNotEmpty()
-                            && $this->filteredCollections->every(fn ($c) => $expandedCollections[$c->id] ?? false);
-                    @endphp
                     <button
-                        wire:click="toggleAllCollections"
+                        @click="toggleAllCollections()"
                         type="button"
                         class="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors rounded hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer"
-                        title="{{ $allExpanded ? 'Collapse all' : 'Expand all' }}"
+                        :title="allExpanded ? 'Collapse all' : 'Expand all'"
                     >
-                        @if($allExpanded)
-                            {{-- Collapse: arrows pointing inward --}}
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 4v5H4M15 4v5h5M4 15h5v5M20 15h-5v5"/>
-                            </svg>
-                        @else
-                            {{-- Expand: arrows pointing outward --}}
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/>
-                            </svg>
-                        @endif
+                        {{-- Collapse: arrows pointing inward --}}
+                        <svg x-show="allExpanded" x-cloak class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 4v5H4M15 4v5h5M4 15h5v5M20 15h-5v5"/>
+                        </svg>
+                        {{-- Expand: arrows pointing outward --}}
+                        <svg x-show="!allExpanded" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/>
+                        </svg>
                     </button>
                 @endif
 
@@ -185,7 +195,7 @@
         <div class="mt-2 flex gap-2">
             <div class="flex-1">
                 <x-beartropy-ui::input
-                    wire:model.live.debounce.300ms="search"
+                    x-model.debounce.150ms="search"
                     placeholder="Search..."
                     icon-start="magnifying-glass"
                     sm

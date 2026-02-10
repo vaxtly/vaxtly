@@ -6,13 +6,13 @@
          @contextmenu.prevent="$dispatch('close-sidebar-menus'); menuOpen = true"
          @close-sidebar-menus.window="menuOpen = false">
         <div class="flex items-center gap-1.5 min-w-0 flex-1">
-            <div x-sort:handle class="{{ $isDragEnabled ? '' : 'hidden' }} cursor-grab active:cursor-grabbing p-0.5 -ml-1 text-gray-300 hover:text-gray-500 dark:text-gray-600 dark:hover:text-gray-400 shrink-0" @click.stop>
+            <div x-sort:handle class="cursor-grab active:cursor-grabbing p-0.5 -ml-1 text-gray-300 hover:text-gray-500 dark:text-gray-600 dark:hover:text-gray-400 shrink-0" :class="{ '!hidden': !{{ $isDragEnabled ? 'true' : 'false' }} || search }" @click.stop>
                 <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M7 2a2 2 0 10.001 4.001A2 2 0 007 2zm0 6a2 2 0 10.001 4.001A2 2 0 007 8zm0 6a2 2 0 10.001 4.001A2 2 0 007 14zm6-8a2 2 0 10-.001-4.001A2 2 0 0013 6zm0 2a2 2 0 10.001 4.001A2 2 0 0013 8zm0 6a2 2 0 10.001 4.001A2 2 0 0013 14z"/>
                 </svg>
             </div>
 
-            <svg class="w-3 h-3 text-gray-400 dark:text-gray-500 transition-transform shrink-0 {{ ($expandedFolders[$folder->id] ?? false) ? 'rotate-90' : '' }}"
+            <svg class="w-3 h-3 text-gray-400 dark:text-gray-500 transition-transform shrink-0"
                  :class="{ 'rotate-90': expandedFolders['{{ $folder->id }}'] }"
                  fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
@@ -138,7 +138,7 @@
     </div>
 
     {{-- Folder Contents (always rendered for drag-and-drop; hidden when collapsed) --}}
-    <div class="ml-4 {{ !($expandedFolders[$folder->id] ?? false) ? 'hidden sort-drop-collapsed' : '' }}" :class="{ 'hidden sort-drop-collapsed': !expandedFolders['{{ $folder->id }}'] }">
+    <div class="ml-4" :class="{ 'hidden sort-drop-collapsed': !expandedFolders['{{ $folder->id }}'] }">
         {{-- Child folders container --}}
         <div wire:key="ffolders-{{ $folder->id }}" x-sort="$wire.reorderFolders($item, $position, 'folder:{{ $folder->id }}')" x-sort:group="folders" class="min-h-[4px]">
             @foreach($folder->children as $child)
