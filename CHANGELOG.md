@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- App crash (500 error) when vault or git server is unreachable on start (e.g. no VPN); now shows a warning toast instead
+- macOS auto-updater not finding updates due to `latest-mac.yml` missing arm64 entries
+
 ## [0.1.17] - 2026-02-10
 
 ### Added
