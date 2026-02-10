@@ -14,7 +14,7 @@ class VariableSubstitutionService
      * @param  string|null  $collectionId  Optional collection ID for collection-level variables
      * @return string The text with variables substituted
      */
-    public function substitute(string $text, ?string $collectionId = null): string
+    public function substitute(string $text, ?string $collectionId = null, int $maxDepth = 10): string
     {
         if (empty($text)) {
             return $text;
@@ -22,15 +22,25 @@ class VariableSubstitutionService
 
         $variables = $this->getResolvedVariables($collectionId);
 
-        return preg_replace_callback(
-            '/\{\{([\w\-\.]+)\}\}/',
-            function ($matches) use ($variables) {
-                $variableName = $matches[1];
+        for ($i = 0; $i < $maxDepth; $i++) {
+            $result = preg_replace_callback(
+                '/\{\{([\w\-\.]+)\}\}/',
+                function ($matches) use ($variables) {
+                    $variableName = $matches[1];
 
-                return $variables[$variableName] ?? $matches[0];
-            },
-            $text
-        );
+                    return $variables[$variableName] ?? $matches[0];
+                },
+                $text
+            );
+
+            if ($result === $text) {
+                break;
+            }
+
+            $text = $result;
+        }
+
+        return $text;
     }
 
     /**

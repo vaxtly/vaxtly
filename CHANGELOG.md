@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Support for nested variable references in environments (e.g. `{{url}}` = `{{host}}:{{port}}/{{path}}`)
+
 ## [0.1.20] - 2026-02-10
 
 ### Fixed
