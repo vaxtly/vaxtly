@@ -13,6 +13,7 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Renderless;
 use Livewire\Component;
+use Native\Desktop\Support\Environment as NativeEnvironment;
 
 new class extends Component
 {
@@ -152,6 +153,18 @@ new class extends Component
     public function openWelcomeModal(): void
     {
         $this->showWelcomeModal = true;
+    }
+
+    #[On('native:'.\Native\Desktop\Events\AutoUpdater\UpdateAvailable::class)]
+    public function onUpdateAvailable(string $version): void
+    {
+        if (NativeEnvironment::isMac()) {
+            $this->toast()->info(
+                "Update v{$version} available",
+                'Run: brew upgrade vaxtly/tap/vaxtly',
+                0,
+            );
+        }
     }
 
     #[On('open-help-modal')]
