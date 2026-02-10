@@ -11,10 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('folders', function (Blueprint $table) {
-            $table->text('environment_ids')->nullable();
-            $table->string('default_environment_id')->nullable();
-        });
+        if (! Schema::hasColumn('folders', 'environment_ids')) {
+            Schema::table('folders', function (Blueprint $table) {
+                $table->text('environment_ids')->nullable();
+                $table->string('default_environment_id')->nullable();
+            });
+        }
     }
 
     /**

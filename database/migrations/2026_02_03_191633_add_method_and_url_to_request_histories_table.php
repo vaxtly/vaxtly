@@ -11,10 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('request_histories', function (Blueprint $table) {
-            $table->string('method', 10)->after('request_id')->default('GET');
-            $table->text('url')->after('method')->default('');
-        });
+        if (! Schema::hasColumn('request_histories', 'method')) {
+            Schema::table('request_histories', function (Blueprint $table) {
+                $table->string('method', 10)->after('request_id')->default('GET');
+                $table->text('url')->after('method')->default('');
+            });
+        }
     }
 
     public function down(): void

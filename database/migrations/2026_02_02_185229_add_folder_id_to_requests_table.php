@@ -11,9 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('requests', function (Blueprint $table) {
-            $table->foreignUuid('folder_id')->nullable()->after('collection_id')->constrained()->nullOnDelete();
-        });
+        if (! Schema::hasColumn('requests', 'folder_id')) {
+            Schema::table('requests', function (Blueprint $table) {
+                $table->foreignUuid('folder_id')->nullable()->after('collection_id')->constrained()->nullOnDelete();
+            });
+        }
     }
 
     /**

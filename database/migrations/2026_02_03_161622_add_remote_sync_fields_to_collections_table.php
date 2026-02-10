@@ -11,12 +11,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('collections', function (Blueprint $table) {
-            $table->string('remote_sha')->nullable();
-            $table->datetime('remote_synced_at')->nullable();
-            $table->boolean('is_dirty')->default(false);
-            $table->boolean('sync_enabled')->default(false);
-        });
+        if (! Schema::hasColumn('collections', 'remote_sha')) {
+            Schema::table('collections', function (Blueprint $table) {
+                $table->string('remote_sha')->nullable();
+                $table->datetime('remote_synced_at')->nullable();
+                $table->boolean('is_dirty')->default(false);
+                $table->boolean('sync_enabled')->default(false);
+            });
+        }
     }
 
     public function down(): void

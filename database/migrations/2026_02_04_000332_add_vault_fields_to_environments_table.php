@@ -11,10 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('environments', function (Blueprint $table) {
-            $table->boolean('vault_synced')->default(false)->after('order');
-            $table->string('vault_path')->nullable()->after('vault_synced');
-        });
+        if (! Schema::hasColumn('environments', 'vault_synced')) {
+            Schema::table('environments', function (Blueprint $table) {
+                $table->boolean('vault_synced')->default(false)->after('order');
+                $table->string('vault_path')->nullable()->after('vault_synced');
+            });
+        }
     }
 
     /**

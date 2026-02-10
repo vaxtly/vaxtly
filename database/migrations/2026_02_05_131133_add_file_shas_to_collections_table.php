@@ -11,9 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('collections', function (Blueprint $table) {
-            $table->json('file_shas')->nullable()->after('remote_sha');
-        });
+        if (! Schema::hasColumn('collections', 'file_shas')) {
+            Schema::table('collections', function (Blueprint $table) {
+                $table->json('file_shas')->nullable()->after('remote_sha');
+            });
+        }
     }
 
     /**
