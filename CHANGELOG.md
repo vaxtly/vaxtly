@@ -7,8 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.21] - 2026-02-10
+
 ### Added
-- Support for nested variable references in environments (e.g. `{{url}}` = `{{host}}:{{port}}/{{path}}`)
+- Unified tab system for requests and environments
+- Nested variable resolution in environments (e.g. `{{url}}` = `{{host}}:{{port}}/{{path}}`)
+
+### Changed
+- Sidebar search now filters instantly client-side (no server round-trip)
+- Sidebar expand/collapse no longer flickers on re-renders
 
 ## [0.1.20] - 2026-02-10
 
