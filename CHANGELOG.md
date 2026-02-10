@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Enabled/disabled toggle for request headers and query params
 - Variable tooltip on hover showing resolved value and source
+- Defer sync of git/vault
 
 ## [0.1.21] - 2026-02-10
 
