@@ -7,6 +7,7 @@ use App\Models\Request;
 use App\Services\RemoteSyncService;
 use App\Services\VaultSyncService;
 use App\Services\WorkspaceService;
+use Beartropy\Ui\Traits\HasToasts;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
@@ -15,6 +16,8 @@ use Livewire\Component;
 
 new class extends Component
 {
+    use HasToasts;
+
     public $collections;
 
     public $selectedCollectionId = null;
@@ -93,19 +96,19 @@ new class extends Component
             return;
         }
 
-        $syncService = new RemoteSyncService;
-        if (! $syncService->isConfigured()) {
-            return;
-        }
-
         try {
+            $syncService = new RemoteSyncService;
+            if (! $syncService->isConfigured()) {
+                return;
+            }
+
             $result = $syncService->pull();
             if ($result->pulled > 0) {
                 $this->loadCollections();
                 $this->dispatch('collections-updated');
             }
-        } catch (\Exception) {
-            // Silently fail on auto-sync
+        } catch (\Exception $e) {
+            $this->toast()->warning('Git sync failed', $e->getMessage());
         }
     }
 
@@ -115,20 +118,20 @@ new class extends Component
             return;
         }
 
-        $vaultService = new VaultSyncService;
-        if (! $vaultService->isConfigured()) {
-            return;
-        }
-
         try {
+            $vaultService = new VaultSyncService;
+            if (! $vaultService->isConfigured()) {
+                return;
+            }
+
             $result = $vaultService->pullAll();
 
             if ($result['created'] > 0) {
                 unset($this->environments, $this->activeEnvironmentId);
                 $this->dispatch('environments-updated');
             }
-        } catch (\Exception) {
-            // Silently fail on auto-sync
+        } catch (\Exception $e) {
+            $this->toast()->warning('Vault sync failed', $e->getMessage());
         }
     }
 
