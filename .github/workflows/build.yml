@@ -99,14 +99,26 @@ jobs:
         run: mkdir -p extras
 
       - name: Build and publish native app
+        shell: bash
         env:
-          NATIVEPHP_APPLE_ID: ${{ secrets.NATIVEPHP_APPLE_ID }}
-          NATIVEPHP_APPLE_ID_PASS: ${{ secrets.NATIVEPHP_APPLE_ID_PASS }}
-          NATIVEPHP_APPLE_TEAM_ID: ${{ secrets.NATIVEPHP_APPLE_TEAM_ID }}
-          CSC_LINK: ${{ secrets.CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
-          CSC_IDENTITY_AUTO_DISCOVERY: ${{ secrets.CSC_LINK != '' }}
-        run: php artisan native:build ${{ matrix.platform }} ${{ matrix.arch }} --publish --no-interaction
+          NATIVEPHP_APPLE_ID_SECRET: ${{ secrets.NATIVEPHP_APPLE_ID }}
+          NATIVEPHP_APPLE_ID_PASS_SECRET: ${{ secrets.NATIVEPHP_APPLE_ID_PASS }}
+          NATIVEPHP_APPLE_TEAM_ID_SECRET: ${{ secrets.NATIVEPHP_APPLE_TEAM_ID }}
+          CSC_LINK_SECRET: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD_SECRET: ${{ secrets.CSC_KEY_PASSWORD }}
+        run: |
+          if [[ -n "$CSC_LINK_SECRET" ]]; then
+            export CSC_LINK="$CSC_LINK_SECRET"
+            export CSC_KEY_PASSWORD="$CSC_KEY_PASSWORD_SECRET"
+          else
+            export CSC_IDENTITY_AUTO_DISCOVERY=false
+          fi
+          if [[ -n "$NATIVEPHP_APPLE_ID_SECRET" ]]; then
+            export NATIVEPHP_APPLE_ID="$NATIVEPHP_APPLE_ID_SECRET"
+            export NATIVEPHP_APPLE_ID_PASS="$NATIVEPHP_APPLE_ID_PASS_SECRET"
+            export NATIVEPHP_APPLE_TEAM_ID="$NATIVEPHP_APPLE_TEAM_ID_SECRET"
+          fi
+          php artisan native:build ${{ matrix.platform }} ${{ matrix.arch }} --publish --no-interaction
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
