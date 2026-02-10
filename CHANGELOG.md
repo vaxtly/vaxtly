@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Enabled/disabled toggle for request headers and query params
+
 ## [0.1.21] - 2026-02-10
 
 ### Added

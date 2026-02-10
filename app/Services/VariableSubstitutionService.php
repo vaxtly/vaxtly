@@ -93,4 +93,59 @@ class VariableSubstitutionService
 
         return $variables;
     }
+
+    /**
+     * Get resolved variables with their values and source labels.
+     *
+     * Collection variables override environment variables — the source reflects the winner.
+     *
+     * @param  string|null  $collectionId  Optional collection ID for collection-level variables
+     * @return array<string, array{value: string, source: string}>
+     */
+    public function getResolvedVariablesWithSource(?string $collectionId = null): array
+    {
+        $variables = [];
+
+        $workspaceId = app(WorkspaceService::class)->activeId();
+        $activeEnvironment = Environment::active()->forWorkspace($workspaceId)->first();
+        if ($activeEnvironment) {
+            try {
+                $envLabel = 'Env: '.$activeEnvironment->name;
+                foreach ($activeEnvironment->getEnabledVariables() as $key => $value) {
+                    $variables[$key] = ['value' => $value, 'source' => $envLabel];
+                }
+            } catch (\Exception) {
+                // Gracefully handle Vault connectivity failures
+            }
+        }
+
+        if ($collectionId) {
+            $collection = Collection::find($collectionId);
+            if ($collection) {
+                foreach ($collection->getEnabledVariables() as $key => $value) {
+                    $variables[$key] = ['value' => $value, 'source' => 'Collection'];
+                }
+            }
+        }
+
+        // Resolve nested variable references so tooltip shows final values
+        $flatMap = array_map(fn (array $entry) => $entry['value'], $variables);
+        foreach ($variables as $key => $entry) {
+            $resolved = $entry['value'];
+            for ($i = 0; $i < 10; $i++) {
+                $result = preg_replace_callback(
+                    '/\{\{([\w\-\.]+)\}\}/',
+                    fn ($m) => $flatMap[$m[1]] ?? $m[0],
+                    $resolved
+                );
+                if ($result === $resolved) {
+                    break;
+                }
+                $resolved = $result;
+            }
+            $variables[$key]['value'] = $resolved;
+        }
+
+        return $variables;
+    }
 }

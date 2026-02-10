@@ -90,6 +90,50 @@ window.setupJsonEditor = (element, content, onChange, isDark, isReadOnly = false
 
 // --- Variable Highlight Directive ---
 document.addEventListener('alpine:init', () => {
+    // Shared tooltip element (one per page)
+    let tooltip = null
+    function getTooltip() {
+        if (!tooltip) {
+            tooltip = document.createElement('div')
+            tooltip.className = 'var-tooltip'
+            tooltip.style.display = 'none'
+            document.body.appendChild(tooltip)
+        }
+        return tooltip
+    }
+
+    function showTooltip(span) {
+        const tip = getTooltip()
+        const value = span.dataset.varValue ?? ''
+        const source = span.dataset.varSource ?? ''
+        tip.innerHTML =
+            '<div class="var-tooltip-source">' + escapeHtml(source) + '</div>' +
+            '<div class="var-tooltip-value">' + escapeHtml(value) + '</div>'
+        tip.style.display = ''
+
+        const rect = span.getBoundingClientRect()
+        tip.style.left = rect.left + 'px'
+        tip.style.top = (rect.top - tip.offsetHeight - 4) + 'px'
+
+        // Keep tooltip within viewport horizontally
+        const tipRect = tip.getBoundingClientRect()
+        if (tipRect.right > window.innerWidth - 8) {
+            tip.style.left = (window.innerWidth - 8 - tip.offsetWidth) + 'px'
+        }
+        if (tipRect.left < 8) {
+            tip.style.left = '8px'
+        }
+    }
+
+    function hideTooltip() {
+        const tip = getTooltip()
+        tip.style.display = 'none'
+    }
+
+    function escapeHtml(str) {
+        return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    }
+
     Alpine.directive('var-highlight', (el, { expression }, { evaluate, effect, cleanup }) => {
         // Ensure parent is positioned for the overlay
         const wrapper = el.parentNode
@@ -113,14 +157,9 @@ document.addEventListener('alpine:init', () => {
             overlay.style.paddingRight = cs.paddingRight
         }
 
-        function escapeHtml(str) {
-            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-        }
-
         function render() {
             const value = el.value || ''
-            const names = evaluate(expression) || []
-            const nameSet = new Set(names)
+            const resolved = evaluate(expression) || {}
             let html = ''
             let lastIndex = 0
             const regex = /\{\{([\w\-\.]+)\}\}/g
@@ -131,8 +170,15 @@ document.addEventListener('alpine:init', () => {
                     html += escapeHtml(value.substring(lastIndex, match.index))
                 }
                 const varName = match[1]
-                const cls = nameSet.has(varName) ? 'var-resolved' : 'var-unresolved'
-                html += '<span class="' + cls + '">' + escapeHtml(match[0]) + '</span>'
+                const info = resolved[varName]
+                if (info) {
+                    html += '<span class="var-resolved" data-var-value="' +
+                        escapeHtml(info.value ?? '') + '" data-var-source="' +
+                        escapeHtml(info.source ?? '') + '">' +
+                        escapeHtml(match[0]) + '</span>'
+                } else {
+                    html += '<span class="var-unresolved">' + escapeHtml(match[0]) + '</span>'
+                }
                 lastIndex = regex.lastIndex
             }
 
@@ -143,6 +189,18 @@ document.addEventListener('alpine:init', () => {
             overlay.innerHTML = html + '&nbsp;'
             overlay.scrollLeft = el.scrollLeft
         }
+
+        // Tooltip event delegation on overlay
+        overlay.addEventListener('mouseenter', (e) => {
+            if (e.target.classList.contains('var-resolved')) {
+                showTooltip(e.target)
+            }
+        }, true)
+        overlay.addEventListener('mouseleave', (e) => {
+            if (e.target.classList.contains('var-resolved')) {
+                hideTooltip()
+            }
+        }, true)
 
         // Initial style sync
         requestAnimationFrame(syncStyles)
@@ -169,6 +227,7 @@ document.addEventListener('alpine:init', () => {
             el.removeEventListener('input', render)
             clearInterval(interval)
             overlay.remove()
+            hideTooltip()
         })
     })
 })

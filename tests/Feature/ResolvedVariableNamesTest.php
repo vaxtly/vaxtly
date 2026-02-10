@@ -18,14 +18,17 @@ it('returns resolved variable names from active environment', function () {
             ['key' => 'baseUrl', 'value' => 'https://api.test', 'enabled' => true],
             ['key' => 'token', 'value' => 'abc123', 'enabled' => true],
         ])
-        ->create(['workspace_id' => $this->workspace->id]);
+        ->create(['workspace_id' => $this->workspace->id, 'name' => 'Production']);
 
     $collection = Collection::factory()->create(['workspace_id' => $this->workspace->id]);
     $request = Request::factory()->create(['collection_id' => $collection->id]);
 
     Livewire::test('request-builder')
         ->call('loadRequest', $request->id)
-        ->assertSet('resolvedVariableNames', ['baseUrl', 'token']);
+        ->assertSet('resolvedVariableNames', [
+            'baseUrl' => ['value' => 'https://api.test', 'source' => 'Env: Production'],
+            'token' => ['value' => 'abc123', 'source' => 'Env: Production'],
+        ]);
 });
 
 it('includes collection variables in resolved names', function () {
@@ -39,7 +42,9 @@ it('includes collection variables in resolved names', function () {
 
     Livewire::test('request-builder')
         ->call('loadRequest', $request->id)
-        ->assertSet('resolvedVariableNames', ['collectionVar']);
+        ->assertSet('resolvedVariableNames', [
+            'collectionVar' => ['value' => 'test', 'source' => 'Collection'],
+        ]);
 });
 
 it('merges environment and collection variables', function () {
@@ -48,7 +53,7 @@ it('merges environment and collection variables', function () {
         ->withVariables([
             ['key' => 'envVar', 'value' => 'env-value', 'enabled' => true],
         ])
-        ->create(['workspace_id' => $this->workspace->id]);
+        ->create(['workspace_id' => $this->workspace->id, 'name' => 'Staging']);
 
     $collection = Collection::factory()->create([
         'workspace_id' => $this->workspace->id,
@@ -60,7 +65,10 @@ it('merges environment and collection variables', function () {
 
     Livewire::test('request-builder')
         ->call('loadRequest', $request->id)
-        ->assertSet('resolvedVariableNames', ['envVar', 'colVar']);
+        ->assertSet('resolvedVariableNames', [
+            'envVar' => ['value' => 'env-value', 'source' => 'Env: Staging'],
+            'colVar' => ['value' => 'col-value', 'source' => 'Collection'],
+        ]);
 });
 
 it('excludes disabled variables from resolved names', function () {
@@ -70,14 +78,16 @@ it('excludes disabled variables from resolved names', function () {
             ['key' => 'enabled', 'value' => 'yes', 'enabled' => true],
             ['key' => 'disabled', 'value' => 'no', 'enabled' => false],
         ])
-        ->create(['workspace_id' => $this->workspace->id]);
+        ->create(['workspace_id' => $this->workspace->id, 'name' => 'Dev']);
 
     $collection = Collection::factory()->create(['workspace_id' => $this->workspace->id]);
     $request = Request::factory()->create(['collection_id' => $collection->id]);
 
     Livewire::test('request-builder')
         ->call('loadRequest', $request->id)
-        ->assertSet('resolvedVariableNames', ['enabled']);
+        ->assertSet('resolvedVariableNames', [
+            'enabled' => ['value' => 'yes', 'source' => 'Env: Dev'],
+        ]);
 });
 
 it('refreshes resolved variable names on active environment change', function () {
@@ -93,9 +103,11 @@ it('refreshes resolved variable names on active environment change', function ()
         ->withVariables([
             ['key' => 'newVar', 'value' => 'val', 'enabled' => true],
         ])
-        ->create(['workspace_id' => $this->workspace->id]);
+        ->create(['workspace_id' => $this->workspace->id, 'name' => 'New Env']);
 
     $component
         ->dispatch('active-environment-changed')
-        ->assertSet('resolvedVariableNames', ['newVar']);
+        ->assertSet('resolvedVariableNames', [
+            'newVar' => ['value' => 'val', 'source' => 'Env: New Env'],
+        ]);
 });

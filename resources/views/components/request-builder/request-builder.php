@@ -109,10 +109,8 @@ new class extends Component
 
     public function refreshResolvedVariableNames(): void
     {
-        $this->resolvedVariableNames = array_keys(
-            app(VariableSubstitutionService::class)
-                ->getResolvedVariables($this->selectedCollectionId)
-        );
+        $this->resolvedVariableNames = app(VariableSubstitutionService::class)
+            ->getResolvedVariablesWithSource($this->selectedCollectionId);
     }
 
     #[On('switch-tab')]

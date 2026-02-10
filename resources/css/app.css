@@ -75,6 +75,8 @@
 
 .var-highlight-overlay .var-resolved {
     color: #059669;
+    pointer-events: auto;
+    cursor: default;
 }
 
 .dark .var-highlight-overlay .var-resolved {
@@ -87,4 +89,31 @@
 
 .dark .var-highlight-overlay .var-unresolved {
     color: #f87171;
+}
+
+/* Variable tooltip */
+.var-tooltip {
+    position: fixed;
+    z-index: 50;
+    max-width: 300px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    background-color: #1f2937;
+    color: #f3f4f6;
+    font-size: 12px;
+    line-height: 1.4;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    pointer-events: none;
+    word-break: break-all;
+}
+
+.var-tooltip-source {
+    color: #9ca3af;
+    font-size: 11px;
+    margin-bottom: 2px;
+}
+
+.var-tooltip-value {
+    color: #e5e7eb;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
