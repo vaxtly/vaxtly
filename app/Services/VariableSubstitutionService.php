@@ -78,8 +78,8 @@ class VariableSubstitutionService
         if ($activeEnvironment) {
             try {
                 $variables = $activeEnvironment->getEnabledVariables();
-            } catch (\Exception) {
-                // Gracefully handle Vault connectivity failures
+            } catch (\Exception $e) {
+                report($e);
             }
         }
 
@@ -114,8 +114,8 @@ class VariableSubstitutionService
                 foreach ($activeEnvironment->getEnabledVariables() as $key => $value) {
                     $variables[$key] = ['value' => $value, 'source' => $envLabel];
                 }
-            } catch (\Exception) {
-                // Gracefully handle Vault connectivity failures
+            } catch (\Exception $e) {
+                report($e);
             }
         }
 

@@ -30,12 +30,12 @@ class Environment extends Model
 
             if ($environment->vault_synced) {
                 try {
-                    $vaultService = new VaultSyncService;
+                    $vaultService = app(VaultSyncService::class);
                     if ($vaultService->isConfigured()) {
                         $vaultService->deleteSecrets($environment);
                     }
-                } catch (\Exception) {
-                    // Continue with local delete even if Vault delete fails
+                } catch (\Exception $e) {
+                    report($e);
                 }
             }
         });
@@ -109,7 +109,7 @@ class Environment extends Model
             return $this->variables ?? [];
         }
 
-        $vaultService = new VaultSyncService;
+        $vaultService = app(VaultSyncService::class);
 
         return $vaultService->fetchVariables($this);
     }

@@ -188,7 +188,7 @@ new class extends Component
 
         if ($environment->vault_synced) {
             try {
-                $vaultService = new VaultSyncService;
+                $vaultService = app(VaultSyncService::class);
 
                 // Check if name changed - migrate secrets in Vault
                 $nameChanged = $this->originalName !== $this->name && ! empty($this->originalName);
@@ -243,7 +243,7 @@ new class extends Component
             return;
         }
 
-        $vaultService = new VaultSyncService;
+        $vaultService = app(VaultSyncService::class);
         $vaultService->clearCache($environment);
 
         $this->vaultError = '';
@@ -284,7 +284,7 @@ new class extends Component
             return '';
         }
 
-        $vaultService = new VaultSyncService;
+        $vaultService = app(VaultSyncService::class);
 
         return $vaultService->buildPath($environment);
     }
@@ -304,7 +304,7 @@ new class extends Component
         }
 
         try {
-            $vaultService = new VaultSyncService;
+            $vaultService = app(VaultSyncService::class);
             if (! $vaultService->isConfigured()) {
                 $this->vaultError = 'Vault is not configured. Please configure it in Settings > Vault.';
 
@@ -335,7 +335,7 @@ new class extends Component
         }
 
         try {
-            $vaultService = new VaultSyncService;
+            $vaultService = app(VaultSyncService::class);
             if (! $vaultService->isConfigured()) {
                 $this->vaultError = 'Vault is not configured. Please configure it in Settings > Vault.';
 
@@ -389,7 +389,7 @@ new class extends Component
         }
 
         try {
-            $vaultService = new VaultSyncService;
+            $vaultService = app(VaultSyncService::class);
             if (! $vaultService->isConfigured()) {
                 $this->vaultError = 'Vault is not configured. Please configure it in Settings > Vault.';
 

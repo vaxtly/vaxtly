@@ -69,8 +69,8 @@ class AppServiceProvider extends ServiceProvider
             set_setting('system.migration_count', $diskCount);
 
             BootLogger::log('runMigrations: completed');
-        } catch (\Throwable) {
-            // Silently fail if the database isn't available yet
+        } catch (\Throwable $e) {
+            BootLogger::log('runMigrations: failed — '.$e->getMessage());
         }
     }
 

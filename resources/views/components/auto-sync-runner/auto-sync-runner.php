@@ -28,7 +28,7 @@ new class extends Component
         }
 
         try {
-            $syncService = new RemoteSyncService;
+            $syncService = app(RemoteSyncService::class);
             if (! $syncService->isConfigured()) {
                 BootLogger::log('auto-sync: git sync skipped (not configured)');
 
@@ -57,7 +57,7 @@ new class extends Component
         }
 
         try {
-            $vaultService = new VaultSyncService;
+            $vaultService = app(VaultSyncService::class);
             if (! $vaultService->isConfigured()) {
                 BootLogger::log('auto-sync: vault sync skipped (not configured)');
 

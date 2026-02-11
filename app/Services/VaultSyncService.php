@@ -96,7 +96,7 @@ class VaultSyncService
      */
     public function fetchVariables(Environment $environment): array
     {
-        $cacheKey = "vaulta_secrets_{$environment->id}";
+        $cacheKey = "vault_secrets_{$environment->id}";
 
         return Cache::remember($cacheKey, 60, function () use ($environment) {
             $provider = $this->getProvider();
@@ -161,8 +161,8 @@ class VaultSyncService
         try {
             $path = $this->buildPath($environment);
             $provider->deleteSecrets($path);
-        } catch (\Exception) {
-            // Gracefully handle if already deleted
+        } catch (\Exception $e) {
+            report($e);
         }
 
         $this->clearCache($environment);

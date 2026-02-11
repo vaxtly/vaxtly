@@ -502,8 +502,8 @@ new class extends Component
                 try {
                     $scriptService = app(ScriptExecutionService::class);
                     $scriptService->executePostResponseScripts($request, $this->statusCode, $this->response, $this->responseHeaders);
-                } catch (\Exception) {
-                    // Non-blocking: post-response script errors don't fail the request
+                } catch (\Exception $e) {
+                    report($e);
                 }
             }
         }

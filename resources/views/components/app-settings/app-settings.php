@@ -191,7 +191,7 @@ new class extends Component
 
             if ($isVaxtly) {
                 $workspaceId = app(WorkspaceService::class)->activeId();
-                $service = new DataExportImportService;
+                $service = app(DataExportImportService::class);
                 $result = $service->import($content, $workspaceId);
 
                 $parts = [];
@@ -282,7 +282,7 @@ new class extends Component
 
         try {
             $workspaceId = app(WorkspaceService::class)->activeId();
-            $service = new DataExportImportService;
+            $service = app(DataExportImportService::class);
 
             $data = match ($this->exportType) {
                 'collections' => $service->exportCollections($workspaceId),
@@ -344,7 +344,7 @@ new class extends Component
         try {
             $this->saveRemoteSettings();
 
-            $service = new RemoteSyncService;
+            $service = app(RemoteSyncService::class);
             if ($service->testConnection()) {
                 $this->remoteStatus = 'Connection successful!';
             } else {
@@ -366,7 +366,7 @@ new class extends Component
         try {
             $this->saveRemoteSettings();
 
-            $service = new RemoteSyncService;
+            $service = app(RemoteSyncService::class);
             $result = $service->pull();
 
             $this->syncResult = [
@@ -399,7 +399,7 @@ new class extends Component
         $this->syncResult = [];
 
         try {
-            $service = new RemoteSyncService;
+            $service = app(RemoteSyncService::class);
             $result = $service->pushAll();
 
             $this->syncResult = [
@@ -428,7 +428,7 @@ new class extends Component
 
     public function resolveConflict(string $collectionId, string $choice): void
     {
-        $service = new RemoteSyncService;
+        $service = app(RemoteSyncService::class);
         $collection = \App\Models\Collection::find($collectionId);
 
         if (! $collection) {
@@ -488,7 +488,7 @@ new class extends Component
         try {
             $this->saveVaultSettings();
 
-            $service = new VaultSyncService;
+            $service = app(VaultSyncService::class);
             if ($service->testConnection()) {
                 $this->vaultStatus = 'Connection successful!';
             } else {
@@ -509,7 +509,7 @@ new class extends Component
         try {
             $this->saveVaultSettings();
 
-            $service = new VaultSyncService;
+            $service = app(VaultSyncService::class);
             $result = $service->pullAll();
 
             $this->vaultSyncResult = $result;
@@ -536,7 +536,7 @@ new class extends Component
         try {
             $this->saveVaultSettings();
 
-            $service = new VaultSyncService;
+            $service = app(VaultSyncService::class);
             $pushed = 0;
             $errors = [];
 

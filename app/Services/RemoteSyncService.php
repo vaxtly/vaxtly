@@ -177,7 +177,7 @@ class RemoteSyncService
             }
         }
 
-        $serializer = new YamlCollectionSerializer;
+        $serializer = app(YamlCollectionSerializer::class);
         $processedCollectionIds = [];
         $logService = app(SessionLogService::class);
 
@@ -283,7 +283,7 @@ class RemoteSyncService
 
         \Log::info('[SYNC] getProvider: '.round((microtime(true) - $startTime) * 1000).'ms');
 
-        $serializer = new YamlCollectionSerializer;
+        $serializer = app(YamlCollectionSerializer::class);
         if ($sanitize) {
             $serializer = $serializer->withSanitizer(new SensitiveDataScanner);
         }
@@ -451,7 +451,7 @@ class RemoteSyncService
             throw new \RuntimeException('Remote directory is empty');
         }
 
-        $serializer = new YamlCollectionSerializer;
+        $serializer = app(YamlCollectionSerializer::class);
         $serializer->importFromDirectory($files, $collection->id);
 
         // Find _collection.yaml SHA for remote_sha
@@ -548,8 +548,8 @@ class RemoteSyncService
 
         try {
             $provider->deleteDirectory($basePath, "Delete collection: {$collection->name}");
-        } catch (\Exception) {
-            // Gracefully handle if already deleted
+        } catch (\Exception $e) {
+            report($e);
         }
     }
 
@@ -563,7 +563,7 @@ class RemoteSyncService
             throw new \RuntimeException('Remote not configured');
         }
 
-        $serializer = new YamlCollectionSerializer;
+        $serializer = app(YamlCollectionSerializer::class);
         $files = $serializer->serializeToDirectory($collection);
         $basePath = self::COLLECTIONS_PATH.'/'.$collection->id;
 
@@ -622,7 +622,7 @@ class RemoteSyncService
             throw new \RuntimeException('Remote directory not found or empty');
         }
 
-        $serializer = new YamlCollectionSerializer;
+        $serializer = app(YamlCollectionSerializer::class);
         $serializer->importFromDirectory($files, $collection->id);
 
         $collection->update([
@@ -645,7 +645,7 @@ class RemoteSyncService
         }
 
         try {
-            $serializer = new YamlCollectionSerializer;
+            $serializer = app(YamlCollectionSerializer::class);
             if ($sanitize) {
                 $serializer = $serializer->withSanitizer(new SensitiveDataScanner);
             }

@@ -301,10 +301,10 @@ new class extends Component
             // Delete from remote if sync was enabled
             if ($collection->sync_enabled && $collection->remote_sha) {
                 try {
-                    $syncService = new RemoteSyncService;
+                    $syncService = app(RemoteSyncService::class);
                     $syncService->deleteRemoteCollection($collection);
-                } catch (\Exception) {
-                    // Continue with local delete even if remote fails
+                } catch (\Exception $e) {
+                    report($e);
                 }
             }
 

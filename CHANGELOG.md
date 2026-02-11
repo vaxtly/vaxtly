@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Vault cache never invalidating: `fetchVariables()` cached under typo key `vaulta_secrets_` while `clearCache()` forgot the correct key `vault_secrets_`
+- Silent exception swallowing: 12 catch blocks now report errors to Laravel log instead of silently discarding them
+
+### Changed
+- Replaced `new ServiceClass` with `app(ServiceClass::class)` across all production code for proper dependency injection and testability
+- Added database indexes on 7 foreign key columns (`workspace_id`, `collection_id`, `folder_id`, `parent_id`, `request_id`) for faster queries
+
 ## [0.1.27] - 2026-02-11
 
 ### Fixed

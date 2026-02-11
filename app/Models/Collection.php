@@ -133,8 +133,8 @@ class Collection extends Model
 
                 return;
             }
-        } catch (\Exception) {
-            // Fall through to mark dirty
+        } catch (\Exception $e) {
+            report($e);
         }
 
         if (! $this->is_dirty) {

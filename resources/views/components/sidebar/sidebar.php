@@ -353,12 +353,12 @@ new class extends Component
 
         if ($deleteRemote && $collection->remote_sha) {
             try {
-                $syncService = new RemoteSyncService;
+                $syncService = app(RemoteSyncService::class);
                 if ($syncService->isConfigured()) {
                     $syncService->deleteRemoteCollection($collection);
                 }
-            } catch (\Exception) {
-                // Continue with local disable even if remote delete fails
+            } catch (\Exception $e) {
+                report($e);
             }
         }
 
@@ -379,7 +379,7 @@ new class extends Component
         }
 
         try {
-            $syncService = new RemoteSyncService;
+            $syncService = app(RemoteSyncService::class);
             if (! $syncService->isConfigured()) {
                 return;
             }
@@ -411,7 +411,7 @@ new class extends Component
         }
 
         try {
-            $syncService = new RemoteSyncService;
+            $syncService = app(RemoteSyncService::class);
             if (! $syncService->isConfigured()) {
                 return;
             }
@@ -421,7 +421,7 @@ new class extends Component
                 $this->toast()->success('Pulled', $collection->name);
             }
         } catch (SyncConflictException) {
-            $conflictInfo = (new RemoteSyncService)->getConflictInfo($collection);
+            $conflictInfo = (app(RemoteSyncService::class))->getConflictInfo($collection);
             $this->conflictCollectionId = $collectionId;
             $this->conflictCollectionName = $collection->name;
             $this->conflictRemoteSha = $conflictInfo['sha'];
@@ -449,7 +449,7 @@ new class extends Component
         }
 
         try {
-            $syncService = new RemoteSyncService;
+            $syncService = app(RemoteSyncService::class);
             $syncService->forceKeepLocal($collection, $this->conflictRemoteSha);
             $this->dispatch('collections-updated');
             $this->toast()->success('Conflict resolved', 'Kept local version of '.$collection->name);
@@ -477,7 +477,7 @@ new class extends Component
         }
 
         try {
-            $syncService = new RemoteSyncService;
+            $syncService = app(RemoteSyncService::class);
             $syncService->forceKeepRemote($collection, $this->conflictRemotePath, $this->conflictRemoteSha);
             $this->dispatch('collections-updated');
             $this->toast()->success('Conflict resolved', 'Pulled remote version of '.$collection->name);
@@ -518,7 +518,7 @@ new class extends Component
             if ($item) {
                 if ($item->vault_synced && $item->name !== $this->editingName) {
                     try {
-                        $vaultService = new VaultSyncService;
+                        $vaultService = app(VaultSyncService::class);
                         if ($vaultService->isConfigured()) {
                             $oldPath = $vaultService->buildPath($item);
                             $item->update(['name' => $this->editingName]);
@@ -527,7 +527,8 @@ new class extends Component
                         } else {
                             $item->update(['name' => $this->editingName]);
                         }
-                    } catch (\Exception) {
+                    } catch (\Exception $e) {
+                        report($e);
                         $item->update(['name' => $this->editingName]);
                     }
                 } else {
@@ -1057,12 +1058,12 @@ new class extends Component
 
         if ($environment->vault_synced) {
             try {
-                $vaultService = new VaultSyncService;
+                $vaultService = app(VaultSyncService::class);
                 if ($vaultService->isConfigured()) {
                     $vaultService->deleteSecrets($environment);
                 }
-            } catch (\Exception) {
-                // Continue with local delete even if Vault delete fails
+            } catch (\Exception $e) {
+                report($e);
             }
         }
 
