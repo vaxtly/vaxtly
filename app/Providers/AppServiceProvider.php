@@ -31,6 +31,7 @@ class AppServiceProvider extends ServiceProvider
         BootLogger::start();
 
         $this->runMigrations();
+        $this->clearStaleCacheOnVersionChange();
         $this->configureDefaults();
 
         BootLogger::log('AppServiceProvider::boot() complete');
@@ -69,6 +70,42 @@ class AppServiceProvider extends ServiceProvider
             BootLogger::log('runMigrations: completed');
         } catch (\Throwable) {
             // Silently fail if the database isn't available yet
+        }
+    }
+
+    /**
+     * After an app update the compiled Blade views in storage/framework/views
+     * may reference stale asset URLs (e.g. old Livewire JS hash), causing 404s
+     * that prevent the frontend from booting. Detect version changes and clear
+     * compiled views + route/config caches so everything regenerates fresh.
+     */
+    protected function clearStaleCacheOnVersionChange(): void
+    {
+        if (app()->runningInConsole()) {
+            return;
+        }
+
+        try {
+            $currentVersion = config('app.version');
+            $cachedVersion = get_setting('system.app_version');
+
+            if ($currentVersion === $cachedVersion) {
+                BootLogger::log("clearStaleCache: version match ({$currentVersion})");
+
+                return;
+            }
+
+            BootLogger::log("clearStaleCache: version changed ({$cachedVersion} -> {$currentVersion}), clearing caches");
+
+            Artisan::call('view:clear');
+            Artisan::call('route:clear');
+            Artisan::call('config:clear');
+
+            set_setting('system.app_version', $currentVersion);
+
+            BootLogger::log('clearStaleCache: done');
+        } catch (\Throwable) {
+            // Silently fail if settings table isn't available yet
         }
     }
 
