@@ -18,14 +18,18 @@ class Environment extends Model
     protected static function booted(): void
     {
         static::deleting(function (Environment $environment) {
-            Collection::whereNotNull('environment_ids')
-                ->where('workspace_id', $environment->workspace_id)
-                ->get()
+            Collection::where('workspace_id', $environment->workspace_id)
+                ->where(function ($q) use ($environment) {
+                    $q->whereJsonContains('environment_ids', $environment->id)
+                        ->orWhere('default_environment_id', $environment->id);
+                })
                 ->each(fn (Collection $collection) => $collection->cleanupDeletedEnvironment($environment->id));
 
-            Folder::whereNotNull('environment_ids')
-                ->whereHas('collection', fn ($q) => $q->where('workspace_id', $environment->workspace_id))
-                ->get()
+            Folder::whereHas('collection', fn ($q) => $q->where('workspace_id', $environment->workspace_id))
+                ->where(function ($q) use ($environment) {
+                    $q->whereJsonContains('environment_ids', $environment->id)
+                        ->orWhere('default_environment_id', $environment->id);
+                })
                 ->each(fn (Folder $folder) => $folder->cleanupDeletedEnvironment($environment->id));
 
             if ($environment->vault_synced) {

@@ -121,6 +121,7 @@ class Folder extends Model
 
     /**
      * Walk up the folder tree to find the closest ancestor (or self) with environment associations.
+     * Loads all folders in the collection with a single query to avoid N+1 per ancestor level.
      */
     public function resolveEnvironmentFolder(): ?self
     {
@@ -128,14 +129,30 @@ class Folder extends Model
             return $this;
         }
 
-        $current = $this->parent;
+        if (! $this->parent_id) {
+            return null;
+        }
 
-        while ($current) {
-            if (! empty($current->getEnvironmentIds())) {
-                return $current;
+        $allFolders = self::where('collection_id', $this->collection_id)
+            ->get(['id', 'parent_id', 'environment_ids', 'default_environment_id'])
+            ->keyBy('id');
+
+        $currentId = $this->parent_id;
+        $visited = [];
+
+        while ($currentId && ! isset($visited[$currentId])) {
+            $visited[$currentId] = true;
+            $folder = $allFolders->get($currentId);
+
+            if (! $folder) {
+                break;
             }
 
-            $current = $current->parent;
+            if (! empty($folder->getEnvironmentIds())) {
+                return $folder;
+            }
+
+            $currentId = $folder->parent_id;
         }
 
         return null;

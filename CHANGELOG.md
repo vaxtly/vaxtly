@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Silent exception swallowing: 12 catch blocks now report errors to Laravel log instead of silently discarding them
 
 ### Changed
+- Narrowed environment deletion cleanup queries with `whereJsonContains` to only load models referencing the deleted environment instead of all models with any environment associations
+- Replaced N+1 ancestor queries in `resolveEnvironmentFolder()` with single-query in-memory traversal, plus cycle guard
 - Replaced `new ServiceClass` with `app(ServiceClass::class)` across all production code for proper dependency injection and testability
 - Added database indexes on 7 foreign key columns (`workspace_id`, `collection_id`, `folder_id`, `parent_id`, `request_id`) for faster queries
 - Converted `$collections` in api-tester from public property to `#[Computed]`, eliminating Eloquent collection serialization in every Livewire payload
