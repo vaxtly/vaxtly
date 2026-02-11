@@ -8,7 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
-- Reverted sidebar x-show mode switching that caused all sidebar operations to slow down
+- Sidebar performance: reverted x-show approach that slowed all sidebar operations; `focusOnTab` now uses `skipRender()` since expand/scroll is fully Alpine-driven (no server re-render needed)
+- Sidebar no longer auto-switches to collections mode on tab change (avoids 2s re-render of 50+ collections); environments auto-switch still works (lightweight)
 
 ## [0.2.3] - 2026-02-11
 

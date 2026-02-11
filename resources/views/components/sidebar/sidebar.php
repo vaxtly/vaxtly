@@ -209,24 +209,35 @@ new class extends Component
     }
 
     // Event listeners (called from Alpine, not #[On] — keeps sidebar decoupled from api-tester batch)
-    // Alpine handles mode switch instantly; this method syncs server state + handles expand/scroll.
+    // Expand/scroll is handled client-side via Alpine events — no server re-render needed.
+    // Only auto-switches to environments mode (lightweight). Skips env→collections auto-switch
+    // to avoid a 2s re-render of the full collections tree (50+ collections, 500+ requests).
     public function focusOnTab(string $tabId, string $type = 'request', ?string $requestId = null, ?string $environmentId = null): void
     {
-        // Sync server mode (Alpine already toggled the visual mode)
         $targetMode = $type === 'environment' ? 'environments' : 'collections';
+
         if ($this->mode !== $targetMode) {
-            $this->switchMode($targetMode);
+            if ($targetMode === 'environments') {
+                // Environments list is lightweight — auto-switch is fine
+                $this->switchMode($targetMode);
+            } else {
+                // Collections tree is heavy — skip auto-switch to avoid 2s re-render.
+                // User can manually switch mode via the footer buttons.
+                $this->skipRender();
+
+                return;
+            }
         }
 
-        // For request tabs: expand the collection and ancestor folders
+        // For request tabs: expand the collection and ancestor folders.
+        // The full tree is always in the DOM (collapse is Alpine-driven), so expand
+        // state changes are sent via dispatchExpandedSync — no re-render needed.
         if ($type === 'request' && $requestId) {
+            $this->skipRender();
             $request = Request::select(['id', 'collection_id', 'folder_id'])->find($requestId);
             if ($request) {
-                $expanded = false;
-
                 if ($request->collection_id && empty($this->expandedCollections[$request->collection_id])) {
                     $this->expandedCollections[$request->collection_id] = true;
-                    $expanded = true;
                 }
 
                 if ($request->folder_id) {
@@ -237,17 +248,13 @@ new class extends Component
                     while ($currentId) {
                         if (empty($this->expandedFolders[$currentId])) {
                             $this->expandedFolders[$currentId] = true;
-                            $expanded = true;
                         }
                         $currentId = $folders[$currentId] ?? null;
                     }
                 }
 
-                if ($expanded) {
-                    $this->persistExpandedState();
-                    $this->dispatchExpandedSync();
-                }
-
+                $this->persistExpandedState();
+                $this->dispatchExpandedSync();
                 $this->dispatch('sidebar-scroll-to', selector: "[data-request-id=\"{$requestId}\"]");
             }
 
