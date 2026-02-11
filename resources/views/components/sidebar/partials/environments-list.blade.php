@@ -1,6 +1,7 @@
 @foreach($this->getEnvironments() as $environment)
     <div
         wire:key="environment-{{ $environment->id }}"
+        data-environment-id="{{ $environment->id }}"
         wire:click="selectEnvironment('{{ $environment->id }}')"
         data-search-text="{{ strtolower($environment->name) }}"
         x-show="!search || $el.dataset.searchText.includes(search.toLowerCase())"

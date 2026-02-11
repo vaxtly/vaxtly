@@ -209,6 +209,68 @@ new class extends Component
     }
 
     // Event listeners
+    #[On('switch-tab')]
+    public function focusOnTab(string $tabId, string $type = 'request', ?string $requestId = null, ?string $environmentId = null): void
+    {
+        $needsRender = false;
+
+        // Switch sidebar mode to match tab type
+        if ($type === 'environment' && $this->mode === 'collections') {
+            $this->switchMode('environments');
+            $needsRender = true;
+        } elseif ($type === 'request' && $this->mode === 'environments') {
+            $this->switchMode('collections');
+            $needsRender = true;
+        }
+
+        // For request tabs: expand the collection and ancestor folders
+        if ($type === 'request' && $requestId) {
+            $request = Request::select(['id', 'collection_id', 'folder_id'])->find($requestId);
+            if ($request) {
+                $expanded = false;
+
+                // Expand the collection
+                if ($request->collection_id && empty($this->expandedCollections[$request->collection_id])) {
+                    $this->expandedCollections[$request->collection_id] = true;
+                    $expanded = true;
+                }
+
+                // Expand ancestor folders
+                if ($request->folder_id) {
+                    $folders = Folder::where('collection_id', $request->collection_id)
+                        ->pluck('parent_id', 'id');
+
+                    $currentId = $request->folder_id;
+                    while ($currentId) {
+                        if (empty($this->expandedFolders[$currentId])) {
+                            $this->expandedFolders[$currentId] = true;
+                            $expanded = true;
+                        }
+                        $currentId = $folders[$currentId] ?? null;
+                    }
+                }
+
+                if ($expanded) {
+                    $this->persistExpandedState();
+                    $this->dispatchExpandedSync();
+                    $needsRender = true;
+                }
+
+                $this->dispatch('sidebar-scroll-to', selector: "[data-request-id=\"{$requestId}\"]");
+            }
+        }
+
+        // For environment tabs: scroll to the environment
+        if ($type === 'environment' && $environmentId) {
+            $this->selectedEnvironmentId = $environmentId;
+            $this->dispatch('sidebar-scroll-to', selector: "[data-environment-id=\"{$environmentId}\"]");
+        }
+
+        if (! $needsRender) {
+            $this->skipRender();
+        }
+    }
+
     #[On('collections-updated')]
     public function refreshCollections(): void
     {
