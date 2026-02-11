@@ -29,6 +29,7 @@
     x-on:sidebar-expanded-sync.window="expandedCollections = $event.detail.collections; expandedFolders = $event.detail.folders"
     x-on:focus-sidebar-search.window="$nextTick(() => { const el = $root.querySelector('[data-sidebar-search] input'); if (el) { el.focus(); el.select(); } })"
     x-on:sidebar-scroll-to.window="$nextTick(() => { const el = $root.querySelector($event.detail.selector); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); })"
+    x-on:switch-tab.window="$wire.focusOnTab($event.detail.tabId, $event.detail.type || 'request', $event.detail.requestId || null, $event.detail.environmentId || null)"
     class="h-full flex flex-col bg-gray-50 dark:bg-gray-950 border-r border-gray-200 dark:border-gray-800">
     {{-- Workspace Switcher --}}
     <div class="px-3 pt-3 pb-1">

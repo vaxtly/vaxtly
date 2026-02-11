@@ -208,8 +208,7 @@ new class extends Component
         };
     }
 
-    // Event listeners
-    #[On('switch-tab')]
+    // Event listeners (called from Alpine, not #[On] — keeps sidebar decoupled from api-tester batch)
     public function focusOnTab(string $tabId, string $type = 'request', ?string $requestId = null, ?string $environmentId = null): void
     {
         $needsRender = false;
