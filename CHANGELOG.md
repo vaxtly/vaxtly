@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-02-11
+
 ### Added
 - Sidebar auto-focuses on tab switch: mode toggles to match tab type, collection/folder tree expands to reveal the active request, and the item scrolls into view
 
