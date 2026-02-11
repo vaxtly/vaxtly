@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-02-11
+
 ### Fixed
 - Sidebar mode switching delay (env→collections): both modes now render with `x-show` so Alpine toggles visibility instantly without waiting for server re-render
 - Environment editor tab not refreshing when post-response script mirrors a variable to the active environment
