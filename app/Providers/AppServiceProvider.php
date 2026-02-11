@@ -77,7 +77,10 @@ class AppServiceProvider extends ServiceProvider
      * After an app update the compiled Blade views in storage/framework/views
      * may reference stale asset URLs (e.g. old Livewire JS hash), causing 404s
      * that prevent the frontend from booting. Detect version changes and clear
-     * compiled views + route/config caches so everything regenerates fresh.
+     * compiled views so they regenerate fresh on next render.
+     *
+     * Only views are safe to clear — route and config caches are pre-built
+     * during the NativePHP build and must not be deleted at runtime.
      */
     protected function clearStaleCacheOnVersionChange(): void
     {
@@ -95,11 +98,9 @@ class AppServiceProvider extends ServiceProvider
                 return;
             }
 
-            BootLogger::log("clearStaleCache: version changed ({$cachedVersion} -> {$currentVersion}), clearing caches");
+            BootLogger::log("clearStaleCache: version changed ({$cachedVersion} -> {$currentVersion}), clearing views");
 
             Artisan::call('view:clear');
-            Artisan::call('route:clear');
-            Artisan::call('config:clear');
 
             set_setting('system.app_version', $currentVersion);
 

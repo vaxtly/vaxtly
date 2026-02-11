@@ -7,10 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.26] - 2026-02-11
+
+### Fixed
+- App won't boot after update to 0.1.25: `route:clear` and `config:clear` deleted pre-built production caches; now only clears compiled views which safely recompile on demand
+
 ## [0.1.25] - 2026-02-11
 
 ### Fixed
-- App freeze after update: stale compiled Blade views referenced old Livewire JS hash causing 404; now auto-clears view/route/config caches on version change
+- App freeze after update: stale compiled Blade views referenced old Livewire JS hash causing 404; now auto-clears compiled views on version change
 
 ## [0.1.24] - 2026-02-10
 
