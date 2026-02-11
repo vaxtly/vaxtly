@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.4] - 2026-02-11
+
 ### Changed
 - Extracted collections tree into `sidebar-collections` child Livewire component for instant mode switching between collections and environments (previously ~2s delay)
 - Sidebar scroll-to-request now centers the item in the viewport instead of minimal scroll
