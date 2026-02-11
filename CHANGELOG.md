@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sidebar auto-focuses on tab switch: mode toggles to match tab type, collection/folder tree expands to reveal the active request, and the item scrolls into view
 
 ### Fixed
+- Response panel clearing when switching tabs — last response now persists per tab until closed
 - Pre-request script select showing empty when reopening a request despite the script still working
 - Select chevron overlapping right border in scripts tab dropdowns
 
