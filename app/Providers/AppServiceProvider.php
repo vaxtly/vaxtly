@@ -19,6 +19,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->clearStaleCachesOnVersionChange();
+
         $this->app->singleton(EncryptionService::class);
         $this->app->singleton(WorkspaceService::class);
     }
@@ -31,7 +33,6 @@ class AppServiceProvider extends ServiceProvider
         BootLogger::start();
 
         $this->runMigrations();
-        $this->clearStaleCacheOnVersionChange();
         $this->configureDefaults();
 
         BootLogger::log('AppServiceProvider::boot() complete');
@@ -74,40 +75,45 @@ class AppServiceProvider extends ServiceProvider
     }
 
     /**
-     * After an app update the compiled Blade views in storage/framework/views
-     * may reference stale asset URLs (e.g. old Livewire JS hash), causing 404s
-     * that prevent the frontend from booting. Detect version changes and clear
-     * compiled views so they regenerate fresh on next render.
+     * On version change (app update), delete stale route cache and compiled views.
      *
-     * Only views are safe to clear — route and config caches are pre-built
-     * during the NativePHP build and must not be deleted at runtime.
+     * Must run in register() — BEFORE any provider boots — so that
+     * RouteServiceProvider::boot() finds no cache file and loads routes
+     * dynamically. This fixes the Livewire JS 404 caused by the route
+     * cache containing a hash derived from the build-time APP_KEY while
+     * the runtime .env (persisted across updates) has a different key.
+     *
+     * Uses a simple file-based version check because the DB is not
+     * available during register().
      */
-    protected function clearStaleCacheOnVersionChange(): void
+    protected function clearStaleCachesOnVersionChange(): void
     {
-        if (app()->runningInConsole()) {
+        if ($this->app->runningInConsole()) {
             return;
         }
 
-        try {
-            $currentVersion = config('app.version');
-            $cachedVersion = get_setting('system.app_version');
+        $versionFile = $this->app->storagePath('framework/app_version');
+        $currentVersion = $this->app->make('config')->get('app.version');
 
-            if ($currentVersion === $cachedVersion) {
-                BootLogger::log("clearStaleCache: version match ({$currentVersion})");
-
-                return;
-            }
-
-            BootLogger::log("clearStaleCache: version changed ({$cachedVersion} -> {$currentVersion}), clearing views");
-
-            Artisan::call('view:clear');
-
-            set_setting('system.app_version', $currentVersion);
-
-            BootLogger::log('clearStaleCache: done');
-        } catch (\Throwable) {
-            // Silently fail if settings table isn't available yet
+        if (file_exists($versionFile) && trim((string) file_get_contents($versionFile)) === $currentVersion) {
+            return;
         }
+
+        // Delete route cache — built with build-time APP_KEY, mismatches runtime key.
+        // Livewire's EndpointResolver hashes config('app.key') to create the JS route
+        // path (e.g. /livewire-abc123/livewire.min.js). The cached route has the hash
+        // from the CI key, but runtime computes a different hash from the persisted key.
+        $routeCache = $this->app->getCachedRoutesPath();
+        if (file_exists($routeCache)) {
+            @unlink($routeCache);
+        }
+
+        // Delete compiled Blade views — may embed stale asset URLs
+        foreach (glob($this->app->storagePath('framework/views/*.php')) ?: [] as $file) {
+            @unlink($file);
+        }
+
+        @file_put_contents($versionFile, $currentVersion);
     }
 
     protected function configureDefaults(): void

@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.27] - 2026-02-11
+
+### Fixed
+- App freeze after update: Livewire JS 404 caused by route cache containing build-time APP_KEY hash while runtime uses persisted key; now deletes stale route cache and compiled views in register() before any provider boots
+
 ## [0.1.26] - 2026-02-11
 
 ### Fixed
