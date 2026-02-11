@@ -260,6 +260,33 @@ new class extends Component
         }
     }
 
+    #[On('environment-variables-mirrored')]
+    public function onEnvironmentVariablesMirrored(): void
+    {
+        if (! $this->environmentId || ! $this->isActive) {
+            return;
+        }
+
+        $environment = Environment::find($this->environmentId);
+        if (! $environment) {
+            return;
+        }
+
+        if ($environment->vault_synced) {
+            try {
+                $this->variables = $environment->getEffectiveVariables();
+            } catch (\Exception $e) {
+                return;
+            }
+        } else {
+            $this->variables = $environment->variables ?? [];
+        }
+
+        if (empty($this->variables)) {
+            $this->variables = [['key' => '', 'value' => '', 'enabled' => true]];
+        }
+    }
+
     public function updatedName(): void
     {
         $this->saveEnvironment();

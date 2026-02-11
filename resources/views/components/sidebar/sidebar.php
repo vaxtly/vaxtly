@@ -209,17 +209,13 @@ new class extends Component
     }
 
     // Event listeners (called from Alpine, not #[On] — keeps sidebar decoupled from api-tester batch)
+    // Alpine handles mode switch instantly; this method syncs server state + handles expand/scroll.
     public function focusOnTab(string $tabId, string $type = 'request', ?string $requestId = null, ?string $environmentId = null): void
     {
-        $needsRender = false;
-
-        // Switch sidebar mode to match tab type
-        if ($type === 'environment' && $this->mode === 'collections') {
-            $this->switchMode('environments');
-            $needsRender = true;
-        } elseif ($type === 'request' && $this->mode === 'environments') {
-            $this->switchMode('collections');
-            $needsRender = true;
+        // Sync server mode (Alpine already toggled the visual mode)
+        $targetMode = $type === 'environment' ? 'environments' : 'collections';
+        if ($this->mode !== $targetMode) {
+            $this->switchMode($targetMode);
         }
 
         // For request tabs: expand the collection and ancestor folders
@@ -228,13 +224,11 @@ new class extends Component
             if ($request) {
                 $expanded = false;
 
-                // Expand the collection
                 if ($request->collection_id && empty($this->expandedCollections[$request->collection_id])) {
                     $this->expandedCollections[$request->collection_id] = true;
                     $expanded = true;
                 }
 
-                // Expand ancestor folders
                 if ($request->folder_id) {
                     $folders = Folder::where('collection_id', $request->collection_id)
                         ->pluck('parent_id', 'id');
@@ -252,21 +246,18 @@ new class extends Component
                 if ($expanded) {
                     $this->persistExpandedState();
                     $this->dispatchExpandedSync();
-                    $needsRender = true;
                 }
 
                 $this->dispatch('sidebar-scroll-to', selector: "[data-request-id=\"{$requestId}\"]");
             }
+
+            return;
         }
 
         // For environment tabs: scroll to the environment
         if ($type === 'environment' && $environmentId) {
             $this->selectedEnvironmentId = $environmentId;
             $this->dispatch('sidebar-scroll-to', selector: "[data-environment-id=\"{$environmentId}\"]");
-        }
-
-        if (! $needsRender) {
-            $this->skipRender();
         }
     }
 

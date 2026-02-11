@@ -502,6 +502,7 @@ new class extends Component
                 try {
                     $scriptService = app(ScriptExecutionService::class);
                     $scriptService->executePostResponseScripts($request, $this->statusCode, $this->response, $this->responseHeaders);
+                    $this->dispatch('environment-variables-mirrored');
                 } catch (\Exception $e) {
                     report($e);
                 }

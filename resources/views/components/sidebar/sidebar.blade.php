@@ -1,5 +1,6 @@
 <div
     x-data="{
+        mode: @js($mode),
         expandedCollections: @js($expandedCollections),
         expandedFolders: @js($expandedFolders),
         search: '',
@@ -29,7 +30,11 @@
     x-on:sidebar-expanded-sync.window="expandedCollections = $event.detail.collections; expandedFolders = $event.detail.folders"
     x-on:focus-sidebar-search.window="$nextTick(() => { const el = $root.querySelector('[data-sidebar-search] input'); if (el) { el.focus(); el.select(); } })"
     x-on:sidebar-scroll-to.window="$nextTick(() => { const el = $root.querySelector($event.detail.selector); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); })"
-    x-on:switch-tab.window="$wire.focusOnTab($event.detail.tabId, $event.detail.type || 'request', $event.detail.requestId || null, $event.detail.environmentId || null)"
+    x-on:switch-tab.window="
+        const t = $event.detail.type || 'request';
+        mode = t === 'environment' ? 'environments' : 'collections';
+        $wire.focusOnTab($event.detail.tabId, t, $event.detail.requestId || null, $event.detail.environmentId || null);
+    "
     class="h-full flex flex-col bg-gray-50 dark:bg-gray-950 border-r border-gray-200 dark:border-gray-800">
     {{-- Workspace Switcher --}}
     <div class="px-3 pt-3 pb-1">
@@ -47,8 +52,9 @@
                     class="w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors cursor-pointer"
                 >
                     <div class="flex items-center gap-2 min-w-0">
-                        <x-bt-icon name="{{ $mode === 'collections' ? 'folder' : 'beaker' }}" class="w-4 h-4 shrink-0 text-gray-400 dark:text-gray-500" />
-                        <span class="truncate">{{ $mode === 'collections' ? 'Collections' : 'Environments' }}</span>
+                        <x-bt-icon x-show="mode === 'collections'" name="folder" class="w-4 h-4 shrink-0 text-gray-400 dark:text-gray-500" />
+                        <x-bt-icon x-show="mode === 'environments'" name="beaker" class="w-4 h-4 shrink-0 text-gray-400 dark:text-gray-500" x-cloak />
+                        <span x-text="mode === 'collections' ? 'Collections' : 'Environments'" class="truncate"></span>
                     </div>
                     <svg class="w-3.5 h-3.5 shrink-0 text-gray-400 transition-transform" :class="modeOpen && 'rotate-180'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
@@ -68,32 +74,26 @@
                 >
                     <div class="p-1">
                         <button
-                            wire:click="switchMode('collections')"
-                            @click="modeOpen = false"
-                            class="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-left rounded-md transition-colors cursor-pointer {{ $mode === 'collections' ? 'bg-beartropy-50 dark:bg-beartropy-900/30 text-beartropy-700 dark:text-beartropy-300 font-medium' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50' }}"
+                            @click="mode = 'collections'; modeOpen = false; $wire.switchMode('collections')"
+                            class="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-left rounded-md transition-colors cursor-pointer"
+                            :class="mode === 'collections' ? 'bg-beartropy-50 dark:bg-beartropy-900/30 text-beartropy-700 dark:text-beartropy-300 font-medium' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50'"
                         >
-                            @if($mode === 'collections')
-                                <svg class="w-3 h-3 shrink-0 text-beartropy-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                                </svg>
-                            @else
-                                <span class="w-3"></span>
-                            @endif
+                            <svg x-show="mode === 'collections'" class="w-3 h-3 shrink-0 text-beartropy-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                            </svg>
+                            <span x-show="mode !== 'collections'" class="w-3"></span>
                             <x-bt-icon name="folder" class="w-3.5 h-3.5 shrink-0" />
                             <span>Collections</span>
                         </button>
                         <button
-                            wire:click="switchMode('environments')"
-                            @click="modeOpen = false"
-                            class="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-left rounded-md transition-colors cursor-pointer {{ $mode === 'environments' ? 'bg-beartropy-50 dark:bg-beartropy-900/30 text-beartropy-700 dark:text-beartropy-300 font-medium' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50' }}"
+                            @click="mode = 'environments'; modeOpen = false; $wire.switchMode('environments')"
+                            class="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-left rounded-md transition-colors cursor-pointer"
+                            :class="mode === 'environments' ? 'bg-beartropy-50 dark:bg-beartropy-900/30 text-beartropy-700 dark:text-beartropy-300 font-medium' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50'"
                         >
-                            @if($mode === 'environments')
-                                <svg class="w-3 h-3 shrink-0 text-beartropy-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                                </svg>
-                            @else
-                                <span class="w-3"></span>
-                            @endif
+                            <svg x-show="mode === 'environments'" class="w-3 h-3 shrink-0 text-beartropy-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                            </svg>
+                            <span x-show="mode !== 'environments'" class="w-3"></span>
                             <x-bt-icon name="beaker" class="w-3.5 h-3.5 shrink-0" />
                             <span>Environments</span>
                         </button>
@@ -102,30 +102,30 @@
             </div>
 
             <div class="flex items-center gap-0.5">
-                @if($mode === 'collections')
-                    <button
-                        @click="toggleAllCollections()"
-                        type="button"
-                        class="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors rounded hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer"
-                        :title="allExpanded ? 'Collapse all' : 'Expand all'"
-                    >
-                        {{-- Collapse: arrows pointing inward --}}
-                        <svg x-show="allExpanded" x-cloak class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 4v5H4M15 4v5h5M4 15h5v5M20 15h-5v5"/>
-                        </svg>
-                        {{-- Expand: arrows pointing outward --}}
-                        <svg x-show="!allExpanded" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/>
-                        </svg>
-                    </button>
-                @endif
+                <button
+                    x-show="mode === 'collections'"
+                    x-cloak
+                    @click="toggleAllCollections()"
+                    type="button"
+                    class="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors rounded hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer"
+                    :title="allExpanded ? 'Collapse all' : 'Expand all'"
+                >
+                    {{-- Collapse: arrows pointing inward --}}
+                    <svg x-show="allExpanded" x-cloak class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 4v5H4M15 4v5h5M4 15h5v5M20 15h-5v5"/>
+                    </svg>
+                    {{-- Expand: arrows pointing outward --}}
+                    <svg x-show="!allExpanded" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/>
+                    </svg>
+                </button>
 
                 <div x-data="{ open: false }" class="relative" @click.away="open = false">
                     <button
                         @click="open = !open"
                         type="button"
                         class="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors rounded hover:bg-gray-100 dark:hover:bg-gray-800"
-                        title="Sort {{ $mode === 'collections' ? 'Collections' : 'Environments' }}"
+                        :title="'Sort ' + (mode === 'collections' ? 'Collections' : 'Environments')"
                     >
                         <x-bt-icon name="arrows-up-down" class="w-4 h-4" />
                     </button>
@@ -220,11 +220,12 @@
 
     {{-- Content --}}
     <div class="flex-1 overflow-auto beartropy-thin-scrollbar p-2 space-y-1">
-        @if($mode === 'collections')
+        <div x-show="mode === 'collections'" x-cloak>
             @include('components.sidebar.partials.collections-list')
-        @else
+        </div>
+        <div x-show="mode === 'environments'" x-cloak>
             @include('components.sidebar.partials.environments-list')
-        @endif
+        </div>
     </div>
 
     {{-- Footer --}}
@@ -232,15 +233,17 @@
         {{-- Mode Switcher --}}
         <div class="flex items-center gap-0.5">
             <button
-                wire:click="switchMode('collections')"
-                class="p-1.5 rounded transition-colors cursor-pointer {{ $mode === 'collections' ? 'text-beartropy-600 dark:text-beartropy-400 bg-beartropy-50 dark:bg-beartropy-900/30' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800' }}"
+                @click="mode = 'collections'; $wire.switchMode('collections')"
+                class="p-1.5 rounded transition-colors cursor-pointer"
+                :class="mode === 'collections' ? 'text-beartropy-600 dark:text-beartropy-400 bg-beartropy-50 dark:bg-beartropy-900/30' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'"
                 title="Collections"
             >
                 <x-bt-icon name="folder" class="w-4 h-4" />
             </button>
             <button
-                wire:click="switchMode('environments')"
-                class="p-1.5 rounded transition-colors cursor-pointer {{ $mode === 'environments' ? 'text-beartropy-600 dark:text-beartropy-400 bg-beartropy-50 dark:bg-beartropy-900/30' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800' }}"
+                @click="mode = 'environments'; $wire.switchMode('environments')"
+                class="p-1.5 rounded transition-colors cursor-pointer"
+                :class="mode === 'environments' ? 'text-beartropy-600 dark:text-beartropy-400 bg-beartropy-50 dark:bg-beartropy-900/30' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'"
                 title="Environments"
             >
                 <x-bt-icon name="beaker" class="w-4 h-4" />
