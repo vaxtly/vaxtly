@@ -27,6 +27,7 @@
         },
     }"
     x-on:sidebar-expanded-sync.window="expandedCollections = $event.detail.collections; expandedFolders = $event.detail.folders"
+    x-on:focus-sidebar-search.window="$nextTick(() => { const el = $root.querySelector('[data-sidebar-search] input'); if (el) { el.focus(); el.select(); } })"
     class="h-full flex flex-col bg-gray-50 dark:bg-gray-950 border-r border-gray-200 dark:border-gray-800">
     {{-- Workspace Switcher --}}
     <div class="px-3 pt-3 pb-1">
@@ -193,7 +194,7 @@
             </div>
         </div>
         <div class="mt-2 flex gap-2">
-            <div class="flex-1">
+            <div class="flex-1" data-sidebar-search>
                 <x-beartropy-ui::input
                     x-model.debounce.150ms="search"
                     placeholder="Search..."

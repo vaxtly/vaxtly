@@ -316,6 +316,49 @@ new class extends Component
         }
     }
 
+    #[On('shortcut-new-request')]
+    #[On('native:'.\App\Events\NewRequestRequested::class)]
+    #[Renderless]
+    public function shortcutNewRequest(): void
+    {
+        $tab = collect($this->openTabs)->firstWhere('id', $this->activeTabId);
+        $collectionId = $tab['collectionId'] ?? null;
+
+        if ($collectionId) {
+            $this->createRequest($collectionId);
+        }
+    }
+
+    #[On('native:'.\App\Events\CloseTabRequested::class)]
+    #[Renderless]
+    public function shortcutCloseTab(): void
+    {
+        if ($this->activeTabId) {
+            $this->closeTab($this->activeTabId);
+        }
+    }
+
+    #[On('shortcut-cycle-environment')]
+    public function shortcutCycleEnvironment(): void
+    {
+        $environments = Environment::ordered()->forWorkspace($this->activeWorkspaceId)->get();
+
+        if ($environments->isEmpty()) {
+            return;
+        }
+
+        $activeId = $this->activeEnvironmentId;
+        $currentIndex = $activeId ? $environments->search(fn ($e) => $e->id === $activeId) : false;
+
+        if ($currentIndex === false) {
+            $next = $environments->first();
+        } else {
+            $next = $environments[($currentIndex + 1) % $environments->count()];
+        }
+
+        $this->setActiveEnvironment($next->id);
+    }
+
     public function createRequest(string $collectionId): void
     {
         $collection = Collection::find($collectionId);

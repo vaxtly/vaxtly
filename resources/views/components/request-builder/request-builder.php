@@ -516,6 +516,13 @@ new class extends Component
         $this->isLoading = false;
     }
 
+    #[On('save-request')]
+    #[On('native:'.\App\Events\SaveRequestRequested::class)]
+    public function onSaveRequestShortcut(): void
+    {
+        $this->saveRequest();
+    }
+
     public function saveRequest(): void
     {
         if (! $this->selectedCollectionId) {

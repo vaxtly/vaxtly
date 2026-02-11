@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Keyboard shortcuts: Ctrl/Cmd+Enter (send), Ctrl/Cmd+S (save), Ctrl/Cmd+N (new request), Ctrl/Cmd+W (close tab), Ctrl+PageDown/PageUp (next/prev tab), Ctrl/Cmd+L (focus URL), Ctrl/Cmd+P (search sidebar), Ctrl/Cmd+B (toggle sidebar), Ctrl/Cmd+E (cycle environment), F1 (help)
+- Collapsible sidebar via Ctrl/Cmd+B with slide transition
+- Keyboard shortcuts section in the Help / User Guide modal
+- NativePHP menu accelerators for New Request, Save Request, and Close Tab
+
 ### Fixed
 - Vault cache never invalidating: `fetchVariables()` cached under typo key `vaulta_secrets_` while `clearCache()` forgot the correct key `vault_secrets_`
 - Silent exception swallowing: 12 catch blocks now report errors to Laravel log instead of silently discarding them

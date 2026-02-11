@@ -1,5 +1,6 @@
 <div
     class="flex-1 min-h-0 h-full flex flex-col overflow-hidden"
+    x-on:send-request.window="sendHttpRequest()"
     x-data="{
         isSending: false,
         abortController: null,

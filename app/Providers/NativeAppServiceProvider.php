@@ -3,9 +3,12 @@
 namespace App\Providers;
 
 use App\Events\CheckForUpdatesRequested;
+use App\Events\CloseTabRequested;
+use App\Events\NewRequestRequested;
 use App\Events\OpenHelpRequested;
 use App\Events\OpenSettingsRequested;
 use App\Events\OpenWelcomeRequested;
+use App\Events\SaveRequestRequested;
 use Native\Desktop\Contracts\ProvidesPhpIni;
 use Native\Desktop\Facades\AutoUpdater;
 use Native\Desktop\Facades\Menu;
@@ -54,6 +57,10 @@ class NativeAppServiceProvider implements ProvidesPhpIni
                 Menu::quit(),
             ),
             Menu::label('File')->submenu(
+                Menu::label('New Request')->event(NewRequestRequested::class)->hotkey('CmdOrCtrl+N'),
+                Menu::label('Save Request')->event(SaveRequestRequested::class)->hotkey('CmdOrCtrl+S'),
+                Menu::label('Close Tab')->event(CloseTabRequested::class)->hotkey('CmdOrCtrl+W'),
+                Menu::separator(),
                 Menu::label('Settings...')->event(OpenSettingsRequested::class)->hotkey('CmdOrCtrl+,'),
                 Menu::separator(),
                 Menu::close(),
