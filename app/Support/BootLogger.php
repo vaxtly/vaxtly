@@ -2,58 +2,42 @@
 
 namespace App\Support;
 
+use Illuminate\Support\Facades\Log;
+
 class BootLogger
 {
     private static ?float $startTime = null;
 
     private static ?float $lastTime = null;
 
-    private static string $logFile = '';
-
     public static function start(): void
     {
-        if (! static::isEnabled()) {
-            return;
-        }
-
-        static::$logFile = storage_path('logs/boot.log');
         static::$startTime = microtime(true);
         static::$lastTime = static::$startTime;
 
-        file_put_contents(static::$logFile, static::formatLine('Boot started')."\n");
+        Log::info(static::formatMessage('Boot started'));
     }
 
     public static function log(string $message): void
     {
-        if (! static::isEnabled() || static::$startTime === null) {
+        if (static::$startTime === null) {
             return;
         }
 
         $now = microtime(true);
 
-        file_put_contents(
-            static::$logFile,
-            static::formatLine($message, $now)."\n",
-            FILE_APPEND,
-        );
+        Log::info(static::formatMessage($message, $now));
 
         static::$lastTime = $now;
     }
 
-    public static function isEnabled(): bool
-    {
-        return (bool) config('app.debug');
-    }
-
-    private static function formatLine(string $message, ?float $now = null): string
+    private static function formatMessage(string $message, ?float $now = null): string
     {
         $now ??= static::$startTime;
 
         $cumulativeMs = round(($now - static::$startTime) * 1000);
         $deltaMs = round(($now - static::$lastTime) * 1000);
 
-        $timestamp = date('Y-m-d H:i:s').'.'.substr(sprintf('%06d', (int) (fmod($now, 1) * 1_000_000)), 0, 3);
-
-        return "[{$timestamp}] [+{$cumulativeMs}ms] [{$deltaMs}ms] {$message}";
+        return "[boot +{$cumulativeMs}ms] [{$deltaMs}ms] {$message}";
     }
 }
