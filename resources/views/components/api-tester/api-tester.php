@@ -4,7 +4,6 @@ use App\Models\Collection;
 use App\Models\Environment;
 use App\Models\Folder;
 use App\Models\Request;
-use App\Services\RemoteSyncService;
 use App\Services\WorkspaceService;
 use App\Support\BootLogger;
 use Beartropy\Ui\Traits\HasToasts;
@@ -288,33 +287,6 @@ new class extends Component
         unset($this->collections);
         $this->selectedCollectionId = $collection->id;
         $this->dispatch('collections-updated');
-    }
-
-    public function deleteCollection(string $collectionId): void
-    {
-        $collection = Collection::find($collectionId);
-
-        if ($collection) {
-            // Delete from remote if sync was enabled
-            if ($collection->sync_enabled && $collection->remote_sha) {
-                try {
-                    $syncService = app(RemoteSyncService::class);
-                    $syncService->deleteRemoteCollection($collection);
-                } catch (\Exception $e) {
-                    report($e);
-                }
-            }
-
-            $collection->delete();
-        }
-
-        unset($this->collections);
-        $this->dispatch('collections-updated');
-
-        if ($this->selectedCollectionId === $collectionId) {
-            $this->selectedCollectionId = null;
-            $this->selectedRequestId = null;
-        }
     }
 
     #[On('shortcut-new-request')]

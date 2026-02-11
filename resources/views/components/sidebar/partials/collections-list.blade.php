@@ -125,7 +125,7 @@
 
                     {{-- Set environments --}}
                     <button
-                        @click="menuOpen = false; $wire.openEnvironmentModal('{{ $collection->id }}', 'collection')"
+                        @click="menuOpen = false; $parent.openEnvironmentModal('{{ $collection->id }}', 'collection')"
                         class="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
                     >
                         <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -219,7 +219,7 @@
                     {{-- Delete --}}
                     <button
                         @click="menuOpen = false"
-                        wire:click="$parent.deleteCollection('{{ $collection->id }}')"
+                        wire:click="deleteCollection('{{ $collection->id }}')"
                         wire:confirm="Are you sure you want to delete this collection and all its contents?"
                         class="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 cursor-pointer"
                     >

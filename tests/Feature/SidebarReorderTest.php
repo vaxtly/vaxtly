@@ -16,7 +16,7 @@ it('reorders collections', function () {
     $c2 = Collection::factory()->create(['workspace_id' => $this->workspace->id, 'order' => 1, 'name' => 'Beta']);
     $c3 = Collection::factory()->create(['workspace_id' => $this->workspace->id, 'order' => 2, 'name' => 'Gamma']);
 
-    Livewire::test('sidebar')
+    Livewire::test('sidebar-collections', ['activeWorkspaceId' => $this->workspace->id])
         ->set('sort', 'manual')
         ->call('reorderCollections', $c3->id, 0);
 
@@ -33,7 +33,7 @@ it('reorders requests within the same folder', function () {
     $r2 = Request::factory()->create(['collection_id' => $collection->id, 'folder_id' => $folder->id, 'order' => 1]);
     $r3 = Request::factory()->create(['collection_id' => $collection->id, 'folder_id' => $folder->id, 'order' => 2]);
 
-    Livewire::test('sidebar')
+    Livewire::test('sidebar-collections', ['activeWorkspaceId' => $this->workspace->id])
         ->set('sort', 'manual')
         ->call('reorderRequests', $r3->id, 0, "folder:{$folder->id}");
 
@@ -49,7 +49,7 @@ it('moves a request to a different folder', function () {
 
     $request = Request::factory()->create(['collection_id' => $collection->id, 'folder_id' => $folderA->id, 'order' => 0]);
 
-    Livewire::test('sidebar')
+    Livewire::test('sidebar-collections', ['activeWorkspaceId' => $this->workspace->id])
         ->set('sort', 'manual')
         ->call('reorderRequests', $request->id, 0, "folder:{$folderB->id}");
 
@@ -63,7 +63,7 @@ it('moves a request to collection root', function () {
 
     $request = Request::factory()->create(['collection_id' => $collection->id, 'folder_id' => $folder->id, 'order' => 0]);
 
-    Livewire::test('sidebar')
+    Livewire::test('sidebar-collections', ['activeWorkspaceId' => $this->workspace->id])
         ->set('sort', 'manual')
         ->call('reorderRequests', $request->id, 0, "collection:{$collection->id}");
 
@@ -78,7 +78,7 @@ it('moves a request across collections', function () {
 
     $request = Request::factory()->create(['collection_id' => $collection1->id, 'folder_id' => null, 'order' => 0]);
 
-    Livewire::test('sidebar')
+    Livewire::test('sidebar-collections', ['activeWorkspaceId' => $this->workspace->id])
         ->set('sort', 'manual')
         ->call('reorderRequests', $request->id, 0, "folder:{$folder->id}");
 
@@ -93,7 +93,7 @@ it('reorders folders within the same parent', function () {
     $f2 = Folder::factory()->create(['collection_id' => $collection->id, 'order' => 1]);
     $f3 = Folder::factory()->create(['collection_id' => $collection->id, 'order' => 2]);
 
-    Livewire::test('sidebar')
+    Livewire::test('sidebar-collections', ['activeWorkspaceId' => $this->workspace->id])
         ->set('sort', 'manual')
         ->call('reorderFolders', $f3->id, 0, "collection:{$collection->id}");
 
@@ -111,7 +111,7 @@ it('moves a folder to a different collection', function () {
     $request = Request::factory()->create(['collection_id' => $collection1->id, 'folder_id' => $folder->id, 'order' => 0]);
     $childRequest = Request::factory()->create(['collection_id' => $collection1->id, 'folder_id' => $childFolder->id, 'order' => 0]);
 
-    Livewire::test('sidebar')
+    Livewire::test('sidebar-collections', ['activeWorkspaceId' => $this->workspace->id])
         ->set('sort', 'manual')
         ->call('reorderFolders', $folder->id, 0, "collection:{$collection2->id}");
 
@@ -128,7 +128,7 @@ it('moves a folder to a subfolder', function () {
     $folderA = Folder::factory()->create(['collection_id' => $collection->id]);
     $folderB = Folder::factory()->create(['collection_id' => $collection->id]);
 
-    Livewire::test('sidebar')
+    Livewire::test('sidebar-collections', ['activeWorkspaceId' => $this->workspace->id])
         ->set('sort', 'manual')
         ->call('reorderFolders', $folderA->id, 0, "folder:{$folderB->id}");
 
@@ -141,7 +141,7 @@ it('prevents circular nesting when moving a parent into its own child', function
     $parent = Folder::factory()->create(['collection_id' => $collection->id, 'order' => 0]);
     $child = Folder::factory()->create(['collection_id' => $collection->id, 'parent_id' => $parent->id, 'order' => 0]);
 
-    Livewire::test('sidebar')
+    Livewire::test('sidebar-collections', ['activeWorkspaceId' => $this->workspace->id])
         ->set('sort', 'manual')
         ->call('reorderFolders', $parent->id, 0, "folder:{$child->id}");
 

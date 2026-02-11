@@ -36,7 +36,7 @@
 {{-- Delete button --}}
 @if($itemType === 'collection')
     <button
-        wire:click.stop="$parent.deleteCollection('{{ $itemId }}')"
+        wire:click.stop="deleteCollection('{{ $itemId }}')"
         wire:confirm="Are you sure you want to delete this {{ $itemType }} and all its requests?"
         class="p-1 text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors cursor-pointer"
         title="Delete {{ $itemType }}"

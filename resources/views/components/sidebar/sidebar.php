@@ -1,20 +1,14 @@
 <?php
 
-use App\Exceptions\SyncConflictException;
 use App\Models\Collection;
 use App\Models\Environment;
 use App\Models\Folder;
-use App\Models\Request;
 use App\Models\Workspace;
 use App\Services\RemoteSyncService;
-use App\Services\SensitiveDataScanner;
-use App\Services\SessionLogService;
 use App\Services\VaultSyncService;
 use App\Services\WorkspaceService;
 use App\Support\BootLogger;
-use App\Traits\HttpColorHelper;
 use Beartropy\Ui\Traits\HasToasts;
-use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Renderless;
@@ -23,7 +17,6 @@ use Livewire\Component;
 new class extends Component
 {
     use HasToasts;
-    use HttpColorHelper;
 
     // Mode: 'collections' or 'environments'
     public string $mode = 'collections';
@@ -31,17 +24,12 @@ new class extends Component
     // Sort: 'manual', 'a-z', 'z-a', 'oldest', 'newest'
     public string $sort = 'manual';
 
-    // Shared properties
+    // Environment editing
     public ?string $editingId = null;
 
     public string $editingName = '';
 
-    public string $editingType = 'collection';
-
-    // Collections-specific
-    public array $expandedCollections = [];
-
-    public array $expandedFolders = [];
+    public string $editingType = 'environment';
 
     // Environment association modal
     public bool $showEnvironmentModal = false;
@@ -91,60 +79,16 @@ new class extends Component
         BootLogger::log('sidebar: mount() started');
 
         $this->activeWorkspaceId = app(WorkspaceService::class)->activeId();
-
-        // Initialize sort based on current mode
         $this->updateSortForMode();
 
-        if ($this->mode === 'collections') {
-            $ws = app(WorkspaceService::class);
-            $savedCollections = $ws->getSetting('ui.expanded_collections', []);
-
-            if (! empty($savedCollections)) {
-                $this->expandedCollections = array_fill_keys($savedCollections, true);
-            } else {
-                foreach ($this->getCollections() as $collection) {
-                    $this->expandedCollections[$collection->id] = true;
-                }
-            }
-
-            BootLogger::log('sidebar: collections loaded, expanded='.count($this->expandedCollections));
-
-            $this->expandedFolders = array_fill_keys(
-                $ws->getSetting('ui.expanded_folders', []),
-                true
-            );
-        }
-
         BootLogger::log('sidebar: mount() complete');
-    }
-
-    #[Renderless]
-    public function persistExpandedState(?array $expandedCollectionIds = null, ?array $expandedFolderIds = null): void
-    {
-        if ($expandedCollectionIds !== null) {
-            $this->expandedCollections = array_fill_keys($expandedCollectionIds, true);
-        }
-        if ($expandedFolderIds !== null) {
-            $this->expandedFolders = array_fill_keys($expandedFolderIds, true);
-        }
-
-        $ws = app(WorkspaceService::class);
-        $ws->setSetting('ui.expanded_collections', array_keys(array_filter($this->expandedCollections)));
-        $ws->setSetting('ui.expanded_folders', array_keys(array_filter($this->expandedFolders)));
-    }
-
-    protected function dispatchExpandedSync(): void
-    {
-        $this->dispatch('sidebar-expanded-sync',
-            collections: $this->expandedCollections,
-            folders: $this->expandedFolders
-        );
     }
 
     public function switchMode(string $mode): void
     {
         $this->mode = $mode;
         $this->updateSortForMode();
+        $this->skipRender();
     }
 
     protected function updateSortForMode(): void
@@ -160,41 +104,42 @@ new class extends Component
     {
         if ($this->mode === 'collections') {
             set_setting('collections.sort', $value);
+            $this->dispatch('sidebar-sort-changed', sort: $value);
         } else {
             set_setting('environments.sort', $value);
         }
     }
 
-    // Data fetching methods
-    public function getCollections()
+    public function create(): void
     {
-        // Only select columns needed for sidebar display — skip heavy/encrypted
-        // fields like variables, auth, headers, body, scripts, query_params
-        $requestColumns = ['id', 'name', 'method', 'url', 'collection_id', 'folder_id', 'order'];
-        $folderColumns = ['id', 'name', 'collection_id', 'parent_id', 'order', 'environment_ids'];
-
-        $query = Collection::select([
-            'id', 'name', 'order', 'workspace_id', 'sync_enabled', 'is_dirty',
-            'environment_ids', 'default_environment_id', 'created_at',
-        ])->with([
-            'rootFolders' => fn ($q) => $q->select($folderColumns),
-            'rootFolders.children' => fn ($q) => $q->select($folderColumns),
-            'rootFolders.children.children' => fn ($q) => $q->select($folderColumns),
-            'rootFolders.children.children.requests' => fn ($q) => $q->select($requestColumns),
-            'rootFolders.children.requests' => fn ($q) => $q->select($requestColumns),
-            'rootFolders.requests' => fn ($q) => $q->select($requestColumns),
-            'rootRequests' => fn ($q) => $q->select($requestColumns),
-        ])->forWorkspace($this->activeWorkspaceId);
-
-        return match ($this->sort) {
-            'manual' => $query->orderBy('order')->get(),
-            'z-a' => $query->orderByRaw('LOWER(name) DESC')->get(),
-            'oldest' => $query->orderBy('created_at', 'asc')->get(),
-            'newest' => $query->orderBy('created_at', 'desc')->get(),
-            default => $query->orderByRaw('LOWER(name) ASC')->get(), // 'a-z'
-        };
+        if ($this->mode === 'collections') {
+            $this->dispatch('create-collection');
+            $this->skipRender();
+        } else {
+            $this->createEnvironment();
+        }
     }
 
+    public function focusOnTab(string $tabId, string $type = 'request', ?string $requestId = null, ?string $environmentId = null): void
+    {
+        $targetMode = $type === 'environment' ? 'environments' : 'collections';
+        $this->mode = $targetMode;
+        $this->updateSortForMode();
+
+        if ($type === 'request' && $requestId) {
+            $this->skipRender();
+            $this->dispatch('sidebar-focus-request', requestId: $requestId);
+
+            return;
+        }
+
+        if ($type === 'environment' && $environmentId) {
+            $this->selectedEnvironmentId = $environmentId;
+            $this->dispatch('sidebar-scroll-to', selector: "[data-environment-id=\"{$environmentId}\"]");
+        }
+    }
+
+    // Environments data
     public function getEnvironments()
     {
         $query = Environment::forWorkspace($this->activeWorkspaceId);
@@ -208,288 +153,156 @@ new class extends Component
         };
     }
 
-    // Event listeners (called from Alpine, not #[On] — keeps sidebar decoupled from api-tester batch)
-    // Expand/scroll is handled client-side via Alpine events — no server re-render needed.
-    // Only auto-switches to environments mode (lightweight). Skips env→collections auto-switch
-    // to avoid a 2s re-render of the full collections tree (50+ collections, 500+ requests).
-    public function focusOnTab(string $tabId, string $type = 'request', ?string $requestId = null, ?string $environmentId = null): void
-    {
-        $targetMode = $type === 'environment' ? 'environments' : 'collections';
-
-        if ($this->mode !== $targetMode) {
-            if ($targetMode === 'environments') {
-                // Environments list is lightweight — auto-switch is fine
-                $this->switchMode($targetMode);
-            } else {
-                // Collections tree is heavy — skip auto-switch to avoid 2s re-render.
-                // User can manually switch mode via the footer buttons.
-                $this->skipRender();
-
-                return;
-            }
-        }
-
-        // For request tabs: expand the collection and ancestor folders.
-        // The full tree is always in the DOM (collapse is Alpine-driven), so expand
-        // state changes are sent via dispatchExpandedSync — no re-render needed.
-        if ($type === 'request' && $requestId) {
-            $this->skipRender();
-            $request = Request::select(['id', 'collection_id', 'folder_id'])->find($requestId);
-            if ($request) {
-                if ($request->collection_id && empty($this->expandedCollections[$request->collection_id])) {
-                    $this->expandedCollections[$request->collection_id] = true;
-                }
-
-                if ($request->folder_id) {
-                    $folders = Folder::where('collection_id', $request->collection_id)
-                        ->pluck('parent_id', 'id');
-
-                    $currentId = $request->folder_id;
-                    while ($currentId) {
-                        if (empty($this->expandedFolders[$currentId])) {
-                            $this->expandedFolders[$currentId] = true;
-                        }
-                        $currentId = $folders[$currentId] ?? null;
-                    }
-                }
-
-                $this->persistExpandedState();
-                $this->dispatchExpandedSync();
-                $this->dispatch('sidebar-scroll-to', selector: "[data-request-id=\"{$requestId}\"]");
-            }
-
-            return;
-        }
-
-        // For environment tabs: scroll to the environment
-        if ($type === 'environment' && $environmentId) {
-            $this->selectedEnvironmentId = $environmentId;
-            $this->dispatch('sidebar-scroll-to', selector: "[data-environment-id=\"{$environmentId}\"]");
-        }
-    }
-
-    #[On('collections-updated')]
-    public function refreshCollections(): void
-    {
-        // Re-render will fetch fresh data
-    }
-
     #[On('environments-updated')]
     public function refreshEnvironments(): void
     {
         // Re-render will fetch fresh data
     }
 
-    /**
-     * Build a searchable text string for client-side filtering.
-     */
-    public function buildSearchableText(Collection $collection): string
-    {
-        $parts = [strtolower($collection->name)];
-
-        foreach ($collection->rootRequests as $request) {
-            $parts[] = strtolower($request->name);
-            $parts[] = strtolower($request->url ?? '');
-        }
-
-        $this->appendFolderSearchText($collection->rootFolders, $parts);
-
-        return implode(' ', array_filter($parts));
-    }
-
-    protected function appendFolderSearchText($folders, array &$parts): void
-    {
-        foreach ($folders as $folder) {
-            $parts[] = strtolower($folder->name);
-
-            foreach ($folder->requests as $request) {
-                $parts[] = strtolower($request->name);
-                $parts[] = strtolower($request->url ?? '');
-            }
-
-            $this->appendFolderSearchText($folder->children, $parts);
-        }
-    }
-
-    // Shared editing methods
+    // Environment editing
     public function startEditing(string $id): void
     {
-        if ($this->mode === 'collections') {
-            $item = Collection::find($id);
-            $this->editingType = 'collection';
-        } else {
-            $item = Environment::find($id);
-            $this->editingType = 'environment';
-        }
-
+        $item = Environment::find($id);
         if ($item) {
             $this->editingId = $id;
             $this->editingName = $item->name;
+            $this->editingType = 'environment';
         }
     }
 
-    public function enableSync(string $collectionId): void
+    public function saveEditing(): void
     {
-        $collection = Collection::find($collectionId);
-        if (! $collection) {
+        if (! $this->editingId) {
             return;
         }
 
-        $findings = (new SensitiveDataScanner)->scanCollection($collection);
+        $this->validate(['editingName' => 'required|string|max:255']);
 
-        if (! empty($findings)) {
-            $this->sensitiveDataCollectionId = $collectionId;
-            $this->sensitiveDataCollectionName = $collection->name;
-            $this->sensitiveDataFindings = $findings;
-            $this->showSensitiveDataModal = true;
-
-            return;
+        $item = Environment::find($this->editingId);
+        if ($item) {
+            if ($item->vault_synced && $item->name !== $this->editingName) {
+                try {
+                    $vaultService = app(VaultSyncService::class);
+                    if ($vaultService->isConfigured()) {
+                        $oldPath = $vaultService->buildPath($item);
+                        $item->update(['name' => $this->editingName]);
+                        $newPath = $vaultService->buildPath($item);
+                        $vaultService->migrateEnvironment($item, $oldPath, $newPath);
+                    } else {
+                        $item->update(['name' => $this->editingName]);
+                    }
+                } catch (\Exception $e) {
+                    report($e);
+                    $item->update(['name' => $this->editingName]);
+                }
+            } else {
+                $item->update(['name' => $this->editingName]);
+            }
+            $this->dispatch('environments-updated');
         }
 
-        $this->performEnableSync($collection);
+        $this->cancelEditing();
     }
 
-    public function confirmEnableSyncWithSensitiveData(): void
+    public function cancelEditing(): void
     {
-        if (! $this->sensitiveDataCollectionId) {
-            $this->closeSensitiveDataModal();
-
-            return;
-        }
-
-        $collection = Collection::find($this->sensitiveDataCollectionId);
-        if (! $collection) {
-            $this->closeSensitiveDataModal();
-
-            return;
-        }
-
-        $this->closeSensitiveDataModal();
-        $this->performEnableSync($collection);
+        $this->editingId = null;
+        $this->editingName = '';
+        $this->editingType = 'environment';
     }
 
-    public function confirmEnableSyncSanitized(): void
+    // Environments-specific methods
+    public function createEnvironment(): void
     {
-        if (! $this->sensitiveDataCollectionId) {
-            $this->closeSensitiveDataModal();
+        $environment = Environment::create([
+            'name' => 'New Environment',
+            'variables' => [],
+            'is_active' => false,
+            'order' => Environment::max('order') + 1,
+            'workspace_id' => $this->activeWorkspaceId,
+        ]);
 
+        $this->selectedEnvironmentId = $environment->id;
+        $this->dispatch('environments-updated');
+        $this->dispatch('open-environment-tab', environmentId: $environment->id);
+        $this->startEditing($environment->id);
+    }
+
+    #[Renderless]
+    public function selectEnvironment(string $environmentId): void
+    {
+        $this->selectedEnvironmentId = $environmentId;
+        $this->dispatch('open-environment-tab', environmentId: $environmentId);
+    }
+
+    public function toggleActive(string $environmentId): void
+    {
+        $environment = Environment::find($environmentId);
+        if (! $environment) {
             return;
         }
 
-        $collection = Collection::find($this->sensitiveDataCollectionId);
-        if (! $collection) {
-            $this->closeSensitiveDataModal();
+        if ($environment->is_active) {
+            $environment->deactivate();
+        } else {
+            $environment->activate();
+        }
 
+        $this->dispatch('environments-updated');
+        $this->dispatch('active-environment-changed');
+    }
+
+    public function deleteEnvironment(string $environmentId): void
+    {
+        $environment = Environment::find($environmentId);
+        if (! $environment) {
             return;
         }
 
-        $this->closeSensitiveDataModal();
-        $this->performEnableSync($collection, sanitize: true);
-    }
-
-    public function closeSensitiveDataModal(): void
-    {
-        $this->showSensitiveDataModal = false;
-        $this->sensitiveDataCollectionId = null;
-        $this->sensitiveDataCollectionName = null;
-        $this->sensitiveDataFindings = [];
-    }
-
-    protected function performEnableSync(Collection $collection, bool $sanitize = false): void
-    {
-        $collection->update(['sync_enabled' => true]);
-        $collection->syncToRemote(sanitize: $sanitize);
-        $this->dispatch('collections-updated');
-        $this->toast()->success('Sync enabled', $collection->name);
-    }
-
-    public function disableSync(string $collectionId, bool $deleteRemote = false): void
-    {
-        $collection = Collection::find($collectionId);
-        if (! $collection) {
-            return;
-        }
-
-        if ($deleteRemote && $collection->remote_sha) {
+        if ($environment->vault_synced) {
             try {
-                $syncService = app(RemoteSyncService::class);
-                if ($syncService->isConfigured()) {
-                    $syncService->deleteRemoteCollection($collection);
+                $vaultService = app(VaultSyncService::class);
+                if ($vaultService->isConfigured()) {
+                    $vaultService->deleteSecrets($environment);
                 }
             } catch (\Exception $e) {
                 report($e);
             }
         }
 
-        $collection->update([
-            'sync_enabled' => false,
-            'is_dirty' => false,
-        ]);
+        $environment->delete();
+        $this->dispatch('environments-updated');
 
-        $this->dispatch('collections-updated');
-    }
-
-    #[On('push-collection')]
-    public function pushSingleCollection(string $collectionId): void
-    {
-        $collection = Collection::find($collectionId);
-        if (! $collection || ! $collection->sync_enabled) {
-            return;
-        }
-
-        try {
-            $syncService = app(RemoteSyncService::class);
-            if (! $syncService->isConfigured()) {
-                return;
-            }
-
-            $syncService->pushCollection($collection);
-            $this->dispatch('collections-updated');
-            $this->toast()->success('Pushed', $collection->name);
-        } catch (\Exception $e) {
-            if ($syncService->isShaConflict($e)) {
-                $conflictInfo = $syncService->getConflictInfo($collection);
-                $this->conflictCollectionId = $collectionId;
-                $this->conflictCollectionName = $collection->name;
-                $this->conflictRemoteSha = $conflictInfo['sha'];
-                $this->conflictRemotePath = $conflictInfo['path'];
-                $this->showConflictModal = true;
-            } else {
-                app(SessionLogService::class)->logGitOperation('push', $collection->name, 'Push failed: '.$e->getMessage(), false);
-                $this->toast()->error('Push failed', $e->getMessage(), 0);
-            }
+        if ($this->selectedEnvironmentId === $environmentId) {
+            $this->selectedEnvironmentId = null;
         }
     }
 
-    #[On('pull-collection')]
-    public function pullSingleCollection(string $collectionId): void
+    public function duplicateEnvironment(string $environmentId): void
     {
-        $collection = Collection::find($collectionId);
-        if (! $collection || ! $collection->sync_enabled) {
+        $environment = Environment::find($environmentId);
+        if (! $environment) {
             return;
         }
 
-        try {
-            $syncService = app(RemoteSyncService::class);
-            if (! $syncService->isConfigured()) {
-                return;
-            }
+        $newEnvironment = $environment->replicate();
+        $newEnvironment->name = $environment->name.' copy';
+        $newEnvironment->is_active = false;
+        $newEnvironment->order = Environment::max('order') + 1;
+        $newEnvironment->save();
 
-            if ($syncService->pullSingleCollection($collection)) {
-                $this->dispatch('collections-updated');
-                $this->toast()->success('Pulled', $collection->name);
-            }
-        } catch (SyncConflictException) {
-            $conflictInfo = (app(RemoteSyncService::class))->getConflictInfo($collection);
-            $this->conflictCollectionId = $collectionId;
-            $this->conflictCollectionName = $collection->name;
-            $this->conflictRemoteSha = $conflictInfo['sha'];
-            $this->conflictRemotePath = $conflictInfo['path'];
-            $this->showConflictModal = true;
-        } catch (\Exception $e) {
-            app(SessionLogService::class)->logGitOperation('pull', $collection->name, 'Pull failed: '.$e->getMessage(), false);
-            $this->toast()->error('Pull failed', $e->getMessage(), 0);
-        }
+        $this->dispatch('environments-updated');
+    }
+
+    // Conflict modal (opened by child events)
+    #[On('open-conflict-modal')]
+    public function openConflictModal(string $collectionId, string $collectionName, string $remoteSha, string $remotePath): void
+    {
+        $this->conflictCollectionId = $collectionId;
+        $this->conflictCollectionName = $collectionName;
+        $this->conflictRemoteSha = $remoteSha;
+        $this->conflictRemotePath = $remotePath;
+        $this->showConflictModal = true;
     }
 
     public function resolveConflictForcePush(): void
@@ -513,7 +326,7 @@ new class extends Component
             $this->dispatch('collections-updated');
             $this->toast()->success('Conflict resolved', 'Kept local version of '.$collection->name);
         } catch (\Exception $e) {
-            app(SessionLogService::class)->logGitOperation('push', $collection->name, 'Force push failed: '.$e->getMessage(), false);
+            app(\App\Services\SessionLogService::class)->logGitOperation('push', $collection->name, 'Force push failed: '.$e->getMessage(), false);
             $this->toast()->error('Conflict resolution failed', $e->getMessage(), 0);
         }
 
@@ -541,7 +354,7 @@ new class extends Component
             $this->dispatch('collections-updated');
             $this->toast()->success('Conflict resolved', 'Pulled remote version of '.$collection->name);
         } catch (\Exception $e) {
-            app(SessionLogService::class)->logGitOperation('pull', $collection->name, 'Force pull failed: '.$e->getMessage(), false);
+            app(\App\Services\SessionLogService::class)->logGitOperation('pull', $collection->name, 'Force pull failed: '.$e->getMessage(), false);
             $this->toast()->error('Conflict resolution failed', $e->getMessage(), 0);
         }
 
@@ -557,438 +370,66 @@ new class extends Component
         $this->conflictRemotePath = null;
     }
 
-    public function saveEditing(): void
+    // Sensitive data modal (opened by child events)
+    #[On('open-sensitive-data-modal')]
+    public function openSensitiveDataModal(string $collectionId, string $collectionName, array $findings): void
     {
-        if (! $this->editingId) {
+        $this->sensitiveDataCollectionId = $collectionId;
+        $this->sensitiveDataCollectionName = $collectionName;
+        $this->sensitiveDataFindings = $findings;
+        $this->showSensitiveDataModal = true;
+    }
+
+    public function confirmEnableSyncWithSensitiveData(): void
+    {
+        if (! $this->sensitiveDataCollectionId) {
+            $this->closeSensitiveDataModal();
+
             return;
         }
 
-        $this->validate(['editingName' => 'required|string|max:255']);
-
-        if ($this->mode === 'collections') {
-            $item = Collection::find($this->editingId);
-            if ($item) {
-                $item->update(['name' => $this->editingName]);
-                $item->markDirty();
-                $this->dispatch('collections-updated');
-            }
-        } else {
-            $item = Environment::find($this->editingId);
-            if ($item) {
-                if ($item->vault_synced && $item->name !== $this->editingName) {
-                    try {
-                        $vaultService = app(VaultSyncService::class);
-                        if ($vaultService->isConfigured()) {
-                            $oldPath = $vaultService->buildPath($item);
-                            $item->update(['name' => $this->editingName]);
-                            $newPath = $vaultService->buildPath($item);
-                            $vaultService->migrateEnvironment($item, $oldPath, $newPath);
-                        } else {
-                            $item->update(['name' => $this->editingName]);
-                        }
-                    } catch (\Exception $e) {
-                        report($e);
-                        $item->update(['name' => $this->editingName]);
-                    }
-                } else {
-                    $item->update(['name' => $this->editingName]);
-                }
-                $this->dispatch('environments-updated');
-            }
-        }
-
-        $this->cancelEditing();
-    }
-
-    public function cancelEditing(): void
-    {
-        $this->editingId = null;
-        $this->editingName = '';
-        $this->editingType = 'collection';
-    }
-
-    // Shared create method
-    public function create(): void
-    {
-        if ($this->mode === 'collections') {
-            $this->createCollection();
-        } else {
-            $this->createEnvironment();
-        }
-    }
-
-    // Collections-specific methods
-    public function createCollection(): void
-    {
-        $collection = Collection::create([
-            'name' => 'New Collection',
-            'description' => 'Description',
-            'order' => Collection::max('order') + 1,
-            'workspace_id' => $this->activeWorkspaceId,
-        ]);
-
-        $this->expandedCollections[$collection->id] = true;
-        $this->persistExpandedState();
-        $this->dispatchExpandedSync();
-        $this->dispatch('collections-updated');
-        $this->startEditing($collection->id);
-    }
-
-    public function createFolder(string $collectionId, ?string $parentId = null): void
-    {
-        $collection = Collection::find($collectionId);
+        $collection = Collection::find($this->sensitiveDataCollectionId);
         if (! $collection) {
+            $this->closeSensitiveDataModal();
+
             return;
         }
 
-        $maxOrder = Folder::where('collection_id', $collectionId)
-            ->where('parent_id', $parentId)
-            ->max('order') ?? 0;
-
-        $folder = Folder::create([
-            'collection_id' => $collectionId,
-            'parent_id' => $parentId,
-            'name' => 'New Folder',
-            'order' => $maxOrder + 1,
-        ]);
-
-        $this->expandedFolders[$folder->id] = true;
-        if ($parentId) {
-            $this->expandedFolders[$parentId] = true;
-        }
-
-        $this->persistExpandedState();
-        $this->dispatchExpandedSync();
-
-        $collection->markDirty();
+        $this->closeSensitiveDataModal();
+        $collection->update(['sync_enabled' => true]);
+        $collection->syncToRemote();
         $this->dispatch('collections-updated');
-        $this->startFolderEditing($folder->id);
+        $this->toast()->success('Sync enabled', $collection->name);
     }
 
-    public function deleteFolder(string $folderId): void
+    public function confirmEnableSyncSanitized(): void
     {
-        $folder = Folder::find($folderId);
-        if ($folder) {
-            $collection = $folder->collection;
-            $folder->delete();
-            $collection?->markDirty();
-        }
-        unset($this->expandedFolders[$folderId]);
-        $this->persistExpandedState();
-        $this->dispatchExpandedSync();
-        $this->dispatch('collections-updated');
-    }
+        if (! $this->sensitiveDataCollectionId) {
+            $this->closeSensitiveDataModal();
 
-    public function startFolderEditing(string $folderId): void
-    {
-        $folder = Folder::find($folderId);
-        if ($folder) {
-            $this->editingId = $folderId;
-            $this->editingName = $folder->name;
-            $this->editingType = 'folder';
-        }
-    }
-
-    public function saveFolderEditing(): void
-    {
-        if (! $this->editingId || $this->editingType !== 'folder') {
             return;
         }
 
-        $this->validate(['editingName' => 'required|string|max:255']);
-
-        $folder = Folder::find($this->editingId);
-        if ($folder) {
-            $folder->update(['name' => $this->editingName]);
-            $folder->collection?->markDirty();
-            $this->dispatch('collections-updated');
-        }
-
-        $this->cancelEditing();
-    }
-
-    public function startRequestEditing(string $requestId): void
-    {
-        $request = Request::find($requestId);
-        if ($request) {
-            $this->editingId = $requestId;
-            $this->editingName = $request->name;
-            $this->editingType = 'request';
-        }
-    }
-
-    public function saveRequestEditing(): void
-    {
-        if (! $this->editingId || $this->editingType !== 'request') {
-            return;
-        }
-
-        $this->validate(['editingName' => 'required|string|max:255']);
-
-        $request = Request::find($this->editingId);
-        if ($request) {
-            $request->update(['name' => $this->editingName]);
-            $request->collection?->markDirty($request);
-            $this->dispatch('collections-updated');
-        }
-
-        $this->cancelEditing();
-    }
-
-    #[Renderless]
-    public function selectRequest(string $requestId): void
-    {
-        $this->dispatch('open-request-tab', requestId: $requestId);
-    }
-
-    public function createRequest(string $collectionId, ?string $folderId = null): void
-    {
-        $collection = Collection::find($collectionId);
+        $collection = Collection::find($this->sensitiveDataCollectionId);
         if (! $collection) {
+            $this->closeSensitiveDataModal();
+
             return;
         }
 
-        $maxOrder = Request::where('collection_id', $collectionId)
-            ->where('folder_id', $folderId)
-            ->max('order') ?? 0;
-
-        $request = Request::create([
-            'collection_id' => $collectionId,
-            'folder_id' => $folderId,
-            'name' => 'New Request',
-            'url' => '',
-            'method' => 'GET',
-            'headers' => [],
-            'query_params' => [],
-            'body' => '',
-            'body_type' => 'none',
-            'order' => $maxOrder + 1,
-        ]);
-
-        $collection->markDirty();
-
-        if ($folderId) {
-            $this->expandedFolders[$folderId] = true;
-            $this->persistExpandedState();
-            $this->dispatchExpandedSync();
-        }
-
-        $this->dispatch('open-request-tab', requestId: $request->id);
-    }
-
-    public function duplicateRequest(string $requestId): void
-    {
-        $request = Request::find($requestId);
-        if (! $request) {
-            return;
-        }
-
-        $newRequest = $request->replicate();
-        $newRequest->name = $request->name.' copy';
-        $newRequest->order = Request::where('collection_id', $request->collection_id)->max('order') + 1;
-        $newRequest->save();
-
-        $request->collection?->markDirty();
+        $this->closeSensitiveDataModal();
+        $collection->update(['sync_enabled' => true]);
+        $collection->syncToRemote(sanitize: true);
         $this->dispatch('collections-updated');
+        $this->toast()->success('Sync enabled', $collection->name);
     }
 
-    public function deleteRequest(string $requestId): void
+    public function closeSensitiveDataModal(): void
     {
-        $request = Request::find($requestId);
-        if ($request) {
-            $collection = $request->collection;
-            $request->delete();
-            $collection?->markDirty();
-        }
-    }
-
-    // Drag-and-drop reorder methods
-    public function reorderCollections(string $id, int $position): void
-    {
-        if ($this->sort !== 'manual') {
-            return;
-        }
-
-        DB::transaction(function () use ($id, $position) {
-            $siblings = Collection::forWorkspace($this->activeWorkspaceId)
-                ->orderBy('order')
-                ->pluck('id')
-                ->toArray();
-
-            $oldIndex = array_search($id, $siblings);
-            if ($oldIndex === false) {
-                return;
-            }
-
-            array_splice($siblings, $oldIndex, 1);
-            array_splice($siblings, $position, 0, [$id]);
-
-            foreach ($siblings as $index => $siblingId) {
-                Collection::where('id', $siblingId)->update(['order' => $index]);
-            }
-        });
-    }
-
-    public function reorderFolders(string $id, int $position, ?string $containerId = null): void
-    {
-        if ($this->sort !== 'manual') {
-            return;
-        }
-
-        $folder = Folder::find($id);
-        if (! $folder) {
-            return;
-        }
-
-        if ($containerId === null) {
-            $containerId = $folder->parent_id
-                ? "folder:{$folder->parent_id}"
-                : "collection:{$folder->collection_id}";
-        }
-
-        [$containerType, $containerUuid] = explode(':', $containerId, 2);
-
-        if ($containerType === 'collection') {
-            $newCollectionId = $containerUuid;
-            $newParentId = null;
-        } else {
-            $parentFolder = Folder::find($containerUuid);
-            if (! $parentFolder) {
-                return;
-            }
-
-            if ($this->isDescendantOf($containerUuid, $id)) {
-                return;
-            }
-
-            $newCollectionId = $parentFolder->collection_id;
-            $newParentId = $parentFolder->id;
-        }
-
-        $oldCollectionId = $folder->collection_id;
-
-        DB::transaction(function () use ($folder, $position, $newCollectionId, $newParentId, $oldCollectionId) {
-            $folder->update([
-                'collection_id' => $newCollectionId,
-                'parent_id' => $newParentId,
-            ]);
-
-            if ($oldCollectionId !== $newCollectionId) {
-                $this->updateDescendantCollectionIds($folder, $newCollectionId);
-            }
-
-            $siblings = Folder::where('collection_id', $newCollectionId)
-                ->where('parent_id', $newParentId)
-                ->orderBy('order')
-                ->pluck('id')
-                ->toArray();
-
-            $oldIndex = array_search($folder->id, $siblings);
-            if ($oldIndex !== false) {
-                array_splice($siblings, $oldIndex, 1);
-            }
-            array_splice($siblings, $position, 0, [$folder->id]);
-
-            foreach ($siblings as $index => $siblingId) {
-                Folder::where('id', $siblingId)->update(['order' => $index]);
-            }
-
-            Collection::find($newCollectionId)?->markDirty();
-            if ($oldCollectionId !== $newCollectionId) {
-                Collection::find($oldCollectionId)?->markDirty();
-            }
-        });
-
-        $this->dispatch('collections-updated');
-    }
-
-    public function reorderRequests(string $id, int $position, ?string $containerId = null): void
-    {
-        if ($this->sort !== 'manual') {
-            return;
-        }
-
-        $request = Request::find($id);
-        if (! $request) {
-            return;
-        }
-
-        if ($containerId === null) {
-            $containerId = $request->folder_id
-                ? "folder:{$request->folder_id}"
-                : "collection:{$request->collection_id}";
-        }
-
-        [$containerType, $containerUuid] = explode(':', $containerId, 2);
-
-        if ($containerType === 'collection') {
-            $newCollectionId = $containerUuid;
-            $newFolderId = null;
-        } else {
-            $parentFolder = Folder::find($containerUuid);
-            if (! $parentFolder) {
-                return;
-            }
-            $newCollectionId = $parentFolder->collection_id;
-            $newFolderId = $parentFolder->id;
-        }
-
-        $oldCollectionId = $request->collection_id;
-
-        DB::transaction(function () use ($request, $position, $newCollectionId, $newFolderId, $oldCollectionId) {
-            $request->update([
-                'collection_id' => $newCollectionId,
-                'folder_id' => $newFolderId,
-            ]);
-
-            $siblings = Request::where('collection_id', $newCollectionId)
-                ->where('folder_id', $newFolderId)
-                ->orderBy('order')
-                ->pluck('id')
-                ->toArray();
-
-            $oldIndex = array_search($request->id, $siblings);
-            if ($oldIndex !== false) {
-                array_splice($siblings, $oldIndex, 1);
-            }
-            array_splice($siblings, $position, 0, [$request->id]);
-
-            foreach ($siblings as $index => $siblingId) {
-                Request::where('id', $siblingId)->update(['order' => $index]);
-            }
-
-            Collection::find($newCollectionId)?->markDirty();
-            if ($oldCollectionId !== $newCollectionId) {
-                Collection::find($oldCollectionId)?->markDirty();
-            }
-        });
-
-        $this->dispatch('collections-updated');
-    }
-
-    protected function isDescendantOf(string $potentialDescendantId, string $ancestorId): bool
-    {
-        $current = Folder::find($potentialDescendantId);
-
-        while ($current) {
-            if ($current->parent_id === $ancestorId) {
-                return true;
-            }
-            $current = $current->parent;
-        }
-
-        return false;
-    }
-
-    protected function updateDescendantCollectionIds(Folder $folder, string $newCollectionId): void
-    {
-        foreach ($folder->children as $child) {
-            $child->update(['collection_id' => $newCollectionId]);
-            Request::where('folder_id', $child->id)->update(['collection_id' => $newCollectionId]);
-            $this->updateDescendantCollectionIds($child, $newCollectionId);
-        }
-
-        Request::where('folder_id', $folder->id)->update(['collection_id' => $newCollectionId]);
+        $this->showSensitiveDataModal = false;
+        $this->sensitiveDataCollectionId = null;
+        $this->sensitiveDataCollectionName = null;
+        $this->sensitiveDataFindings = [];
     }
 
     // Environment association modal methods
@@ -1094,88 +535,6 @@ new class extends Component
         $folder->collection?->markDirty();
     }
 
-    // Environments-specific methods
-    public function createEnvironment(): void
-    {
-        $environment = Environment::create([
-            'name' => 'New Environment',
-            'variables' => [],
-            'is_active' => false,
-            'order' => Environment::max('order') + 1,
-            'workspace_id' => $this->activeWorkspaceId,
-        ]);
-
-        $this->selectedEnvironmentId = $environment->id;
-        $this->dispatch('environments-updated');
-        $this->dispatch('open-environment-tab', environmentId: $environment->id);
-        $this->startEditing($environment->id);
-    }
-
-    public function selectEnvironment(string $environmentId): void
-    {
-        $this->selectedEnvironmentId = $environmentId;
-        $this->dispatch('open-environment-tab', environmentId: $environmentId);
-    }
-
-    public function toggleActive(string $environmentId): void
-    {
-        $environment = Environment::find($environmentId);
-        if (! $environment) {
-            return;
-        }
-
-        if ($environment->is_active) {
-            $environment->deactivate();
-        } else {
-            $environment->activate();
-        }
-
-        $this->dispatch('environments-updated');
-        $this->dispatch('active-environment-changed');
-    }
-
-    public function deleteEnvironment(string $environmentId): void
-    {
-        $environment = Environment::find($environmentId);
-        if (! $environment) {
-            return;
-        }
-
-        if ($environment->vault_synced) {
-            try {
-                $vaultService = app(VaultSyncService::class);
-                if ($vaultService->isConfigured()) {
-                    $vaultService->deleteSecrets($environment);
-                }
-            } catch (\Exception $e) {
-                report($e);
-            }
-        }
-
-        $environment->delete();
-        $this->dispatch('environments-updated');
-
-        if ($this->selectedEnvironmentId === $environmentId) {
-            $this->selectedEnvironmentId = null;
-        }
-    }
-
-    public function duplicateEnvironment(string $environmentId): void
-    {
-        $environment = Environment::find($environmentId);
-        if (! $environment) {
-            return;
-        }
-
-        $newEnvironment = $environment->replicate();
-        $newEnvironment->name = $environment->name.' copy';
-        $newEnvironment->is_active = false;
-        $newEnvironment->order = Environment::max('order') + 1;
-        $newEnvironment->save();
-
-        $this->dispatch('environments-updated');
-    }
-
     // Workspace methods
     #[Computed]
     public function workspaces()
@@ -1200,27 +559,8 @@ new class extends Component
         $this->selectedEnvironmentId = null;
         $this->showWorkspaceDropdown = false;
 
-        // Load saved expanded state for the new workspace, or expand all
-        $ws = app(WorkspaceService::class);
-        $savedCollections = $ws->getSetting('ui.expanded_collections', []);
-
-        if (! empty($savedCollections)) {
-            $this->expandedCollections = array_fill_keys($savedCollections, true);
-            $this->expandedFolders = array_fill_keys(
-                $ws->getSetting('ui.expanded_folders', []),
-                true
-            );
-        } else {
-            $this->expandedCollections = [];
-            $this->expandedFolders = [];
-            foreach ($this->getCollections() as $collection) {
-                $this->expandedCollections[$collection->id] = true;
-            }
-        }
-
         unset($this->workspaces, $this->activeWorkspace);
 
-        $this->dispatchExpandedSync();
         $this->dispatch('workspace-switched', workspaceId: $workspaceId);
         $this->dispatch('collections-updated');
         $this->dispatch('environments-updated');
