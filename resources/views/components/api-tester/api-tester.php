@@ -19,8 +19,6 @@ new class extends Component
 {
     use HasToasts;
 
-    public $collections;
-
     public $selectedCollectionId = null;
 
     public $selectedRequestId = null;
@@ -42,9 +40,6 @@ new class extends Component
         BootLogger::log('api-tester: mount() started');
 
         $this->activeWorkspaceId = app(WorkspaceService::class)->activeId();
-
-        $this->loadCollections();
-        BootLogger::log('api-tester: loadCollections done');
 
         $this->restoreTabs();
         BootLogger::log('api-tester: restoreTabs done');
@@ -205,9 +200,10 @@ new class extends Component
         return $tab['folderId'] ?? null;
     }
 
-    public function loadCollections(): void
+    #[Computed]
+    public function collections()
     {
-        $this->collections = Collection::query()
+        return Collection::query()
             ->select(['id', 'name', 'order', 'workspace_id', 'sync_enabled', 'is_dirty', 'environment_ids', 'default_environment_id', 'remote_sha', 'created_at', 'updated_at'])
             ->with('requests')
             ->forWorkspace($this->activeWorkspaceId)
@@ -219,7 +215,7 @@ new class extends Component
     #[On('collections-updated')]
     public function refreshCollections(): void
     {
-        $this->loadCollections();
+        unset($this->collections);
     }
 
     #[On('environments-updated')]
@@ -288,7 +284,7 @@ new class extends Component
             'workspace_id' => $this->activeWorkspaceId,
         ]);
 
-        $this->loadCollections();
+        unset($this->collections);
         $this->selectedCollectionId = $collection->id;
         $this->dispatch('collections-updated');
     }
@@ -311,7 +307,7 @@ new class extends Component
             $collection->delete();
         }
 
-        $this->loadCollections();
+        unset($this->collections);
         $this->dispatch('collections-updated');
 
         if ($this->selectedCollectionId === $collectionId) {
@@ -339,7 +335,7 @@ new class extends Component
             'order' => $collection->requests()->max('order') + 1,
         ]);
 
-        $this->loadCollections();
+        unset($this->collections);
         $this->selectedCollectionId = $collectionId;
         $this->selectedRequestId = $request->id;
         $this->dispatch('collections-updated');
@@ -532,7 +528,7 @@ new class extends Component
         $this->selectedCollectionId = null;
         $this->selectedRequestId = null;
         $this->envLocked = false;
-        $this->loadCollections();
+        unset($this->collections);
         unset($this->environments, $this->activeEnvironmentId);
     }
 
@@ -545,7 +541,7 @@ new class extends Component
 
         $collection->addEnvironment($environmentId);
         $collection->markDirty();
-        $this->loadCollections();
+        unset($this->collections);
     }
 
     public function removeCollectionEnvironment(string $collectionId, string $environmentId): void
@@ -557,7 +553,7 @@ new class extends Component
 
         $collection->removeEnvironment($environmentId);
         $collection->markDirty();
-        $this->loadCollections();
+        unset($this->collections);
     }
 
     public function setCollectionDefaultEnvironment(string $collectionId, ?string $environmentId): void
@@ -569,6 +565,6 @@ new class extends Component
 
         $collection->setDefaultEnvironment($environmentId);
         $collection->markDirty();
-        $this->loadCollections();
+        unset($this->collections);
     }
 };

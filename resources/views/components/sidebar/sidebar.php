@@ -933,11 +933,32 @@ new class extends Component
     }
 
     // Environment association modal methods
+    #[Computed]
+    public function environmentModalTarget()
+    {
+        if (! $this->environmentModalTargetId) {
+            return null;
+        }
+
+        return $this->environmentModalTargetType === 'folder'
+            ? Folder::find($this->environmentModalTargetId)
+            : Collection::find($this->environmentModalTargetId);
+    }
+
+    #[Computed]
+    public function allEnvironmentsForModal()
+    {
+        return Environment::forWorkspace($this->activeWorkspaceId)
+            ->orderByRaw('LOWER(name) ASC')
+            ->get();
+    }
+
     public function openEnvironmentModal(string $targetId, string $type = 'collection'): void
     {
         $this->environmentModalTargetType = $type;
         $this->environmentModalTargetId = $targetId;
         $this->showEnvironmentModal = true;
+        unset($this->environmentModalTarget, $this->allEnvironmentsForModal);
     }
 
     public function closeEnvironmentModal(): void
@@ -945,6 +966,7 @@ new class extends Component
         $this->showEnvironmentModal = false;
         $this->environmentModalTargetType = 'collection';
         $this->environmentModalTargetId = null;
+        unset($this->environmentModalTarget, $this->allEnvironmentsForModal);
     }
 
     #[On('open-env-modal-for-context')]
@@ -953,6 +975,7 @@ new class extends Component
         $this->openEnvironmentModal($id, $type);
     }
 
+    #[Renderless]
     public function toggleCollectionEnvironment(string $collectionId, string $environmentId): void
     {
         $collection = Collection::find($collectionId);
@@ -969,6 +992,7 @@ new class extends Component
         $collection->markDirty();
     }
 
+    #[Renderless]
     public function setCollectionDefaultEnvironment(string $collectionId, ?string $environmentId): void
     {
         $collection = Collection::find($collectionId);
@@ -981,6 +1005,7 @@ new class extends Component
         $collection->markDirty();
     }
 
+    #[Renderless]
     public function toggleFolderEnvironment(string $folderId, string $environmentId): void
     {
         $folder = Folder::find($folderId);
@@ -997,6 +1022,7 @@ new class extends Component
         $folder->collection?->markDirty();
     }
 
+    #[Renderless]
     public function setFolderDefaultEnvironment(string $folderId, ?string $environmentId): void
     {
         $folder = Folder::find($folderId);

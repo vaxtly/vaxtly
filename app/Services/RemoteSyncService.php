@@ -274,14 +274,20 @@ class RemoteSyncService
     public function pushCollection(Collection $collection, bool $sanitize = false): void
     {
         $startTime = microtime(true);
-        \Log::info('[SYNC] pushCollection START');
+        $debug = config('app.debug');
+
+        if ($debug) {
+            \Log::info('[SYNC] pushCollection START');
+        }
 
         $provider = $this->getProvider();
         if (! $provider) {
             throw new \RuntimeException('Remote not configured');
         }
 
-        \Log::info('[SYNC] getProvider: '.round((microtime(true) - $startTime) * 1000).'ms');
+        if ($debug) {
+            \Log::info('[SYNC] getProvider: '.round((microtime(true) - $startTime) * 1000).'ms');
+        }
 
         $serializer = app(YamlCollectionSerializer::class);
         if ($sanitize) {
@@ -289,7 +295,9 @@ class RemoteSyncService
         }
         $localFiles = $serializer->serializeToDirectory($collection);
 
-        \Log::info('[SYNC] serialize: '.round((microtime(true) - $startTime) * 1000).'ms, files='.count($localFiles));
+        if ($debug) {
+            \Log::info('[SYNC] serialize: '.round((microtime(true) - $startTime) * 1000).'ms, files='.count($localFiles));
+        }
 
         $basePath = self::COLLECTIONS_PATH.'/'.$collection->id;
 
@@ -306,7 +314,9 @@ class RemoteSyncService
             }
         }
 
-        \Log::info('[SYNC] listDirectoryRecursive: '.round((microtime(true) - $startTime) * 1000).'ms');
+        if ($debug) {
+            \Log::info('[SYNC] listDirectoryRecursive: '.round((microtime(true) - $startTime) * 1000).'ms');
+        }
 
         // 3-way merge: detect conflicts per file
         $conflicts = [];
@@ -330,7 +340,9 @@ class RemoteSyncService
             // Check if remote changed from what we knew (compare remote SHAs)
             $remoteChanged = $baseRemoteSha !== null && $remoteSha !== null && $remoteSha !== $baseRemoteSha;
 
-            \Log::debug("[SYNC] File: {$fullPath}, localChanged: ".($localChanged ? 'yes' : 'no').', remoteChanged: '.($remoteChanged ? 'yes' : 'no'));
+            if ($debug) {
+                \Log::debug("[SYNC] File: {$fullPath}, localChanged: ".($localChanged ? 'yes' : 'no').', remoteChanged: '.($remoteChanged ? 'yes' : 'no'));
+            }
 
             if ($remoteChanged && $localChanged) {
                 // Both changed the same file = CONFLICT
@@ -361,10 +373,14 @@ class RemoteSyncService
             }
         }
 
-        \Log::info('[SYNC] conflict check done: '.round((microtime(true) - $startTime) * 1000).'ms, pushing '.count($filesToPush).' files, deleting '.count($filesToDelete).' files');
+        if ($debug) {
+            \Log::info('[SYNC] conflict check done: '.round((microtime(true) - $startTime) * 1000).'ms, pushing '.count($filesToPush).' files, deleting '.count($filesToDelete).' files');
+        }
 
         if (empty($filesToPush) && empty($filesToDelete)) {
-            \Log::info('[SYNC] No files to push or delete, already in sync');
+            if ($debug) {
+                \Log::info('[SYNC] No files to push or delete, already in sync');
+            }
             $collection->update(['is_dirty' => false]);
 
             return;
@@ -373,7 +389,9 @@ class RemoteSyncService
         // Commit changed and deleted files in a single atomic commit
         $provider->commitMultipleFiles($filesToPush, "Sync: {$collection->name}", $filesToDelete);
 
-        \Log::info('[SYNC] commitMultipleFiles: '.round((microtime(true) - $startTime) * 1000).'ms');
+        if ($debug) {
+            \Log::info('[SYNC] commitMultipleFiles: '.round((microtime(true) - $startTime) * 1000).'ms');
+        }
 
         // Build new file state locally (no API call needed)
         // Start fresh from local files only — don't inherit orphaned entries from baseState
@@ -392,7 +410,9 @@ class RemoteSyncService
             ];
         }
 
-        \Log::info('[SYNC] compute local state: '.round((microtime(true) - $startTime) * 1000).'ms');
+        if ($debug) {
+            \Log::info('[SYNC] compute local state: '.round((microtime(true) - $startTime) * 1000).'ms');
+        }
 
         // Store _collection.yaml blob SHA as remote_sha (not the commit SHA)
         $collectionYamlPath = $basePath.'/_collection.yaml';
@@ -405,11 +425,15 @@ class RemoteSyncService
             'is_dirty' => false,
         ]);
 
-        \Log::info('[SYNC] update collection: '.round((microtime(true) - $startTime) * 1000).'ms');
+        if ($debug) {
+            \Log::info('[SYNC] update collection: '.round((microtime(true) - $startTime) * 1000).'ms');
+        }
 
         app(SessionLogService::class)->logGitOperation('push', $collection->name, 'Pushed to remote successfully');
 
-        \Log::info('[SYNC] pushCollection END: '.round((microtime(true) - $startTime) * 1000).'ms TOTAL');
+        if ($debug) {
+            \Log::info('[SYNC] pushCollection END: '.round((microtime(true) - $startTime) * 1000).'ms TOTAL');
+        }
     }
 
     /**
@@ -694,7 +718,9 @@ class RemoteSyncService
 
             // Treat 409 (GitHub) and 400 (GitLab) as conflicts - mark dirty for full push later
             if ($statusCode === 409 || $statusCode === 400 || str_contains($message, '409') || str_contains($message, '400')) {
-                \Log::info("[SYNC] Single-file push conflict for {$request->name}, marking collection dirty");
+                if (config('app.debug')) {
+                    \Log::info("[SYNC] Single-file push conflict for {$request->name}, marking collection dirty");
+                }
             } else {
                 \Log::warning("[SYNC] Single-file push failed for {$request->name}: {$e->getMessage()}");
             }

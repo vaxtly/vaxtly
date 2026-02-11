@@ -1,12 +1,9 @@
 {{-- Environment Association Modal --}}
 @if($showEnvironmentModal && $environmentModalTargetId)
     @php
-        $isFolder = $environmentModalTargetType === 'folder';
-        $modalTarget = $isFolder
-            ? \App\Models\Folder::find($environmentModalTargetId)
-            : \App\Models\Collection::find($environmentModalTargetId);
-        $allEnvironments = \App\Models\Environment::forWorkspace($this->activeWorkspaceId)->orderByRaw('LOWER(name) ASC')->get();
-        $targetLabel = $isFolder ? 'folder' : 'collection';
+        $modalTarget = $this->environmentModalTarget;
+        $allEnvironments = $this->allEnvironmentsForModal;
+        $targetLabel = $environmentModalTargetType === 'folder' ? 'folder' : 'collection';
     @endphp
     @if($modalTarget)
         <x-beartropy-ui::modal

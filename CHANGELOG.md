@@ -14,6 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Replaced `new ServiceClass` with `app(ServiceClass::class)` across all production code for proper dependency injection and testability
 - Added database indexes on 7 foreign key columns (`workspace_id`, `collection_id`, `folder_id`, `parent_id`, `request_id`) for faster queries
+- Converted `$collections` in api-tester from public property to `#[Computed]`, eliminating Eloquent collection serialization in every Livewire payload
+- Stripped response data (body, headers, status, duration, error) from tab state cache in request-builder to prevent multi-MB payloads with multiple tabs
+- Moved inline DB queries from environment-modal blade to `#[Computed]` properties on sidebar component
+- Added `#[Renderless]` to 4 environment-modal toggle/default methods since Alpine manages UI state client-side
+- Wrapped 15 sync debug/timing logs in `RemoteSyncService` behind `APP_DEBUG` to stop cluttering production logs
+- Added depth limit (max 20) to `YamlCollectionSerializer` import/serialize recursion to guard against stack overflow from malformed data
 
 ## [0.1.27] - 2026-02-11
 

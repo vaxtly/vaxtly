@@ -95,8 +95,12 @@ class YamlCollectionSerializer
      *
      * @param  array<string, string>  $files
      */
-    private function serializeFolderRecursive(Folder $folder, string $parentPath, array &$files): void
+    private function serializeFolderRecursive(Folder $folder, string $parentPath, array &$files, int $depth = 0): void
     {
+        if ($depth > 20) {
+            throw new \RuntimeException('Folder nesting depth exceeded maximum of 20 levels');
+        }
+
         $folderPath = $parentPath.'/'.$folder->id;
 
         // Folder metadata
@@ -127,7 +131,7 @@ class YamlCollectionSerializer
 
         // Nested folders
         foreach ($folder->children as $childFolder) {
-            $this->serializeFolderRecursive($childFolder, $folderPath, $files);
+            $this->serializeFolderRecursive($childFolder, $folderPath, $files, $depth + 1);
         }
     }
 
@@ -308,8 +312,13 @@ class YamlCollectionSerializer
         array $filesByPath,
         Collection $collection,
         ?string $parentId,
-        int $order
+        int $order,
+        int $depth = 0
     ): void {
+        if ($depth > 20) {
+            throw new \RuntimeException('Folder nesting depth exceeded maximum of 20 levels');
+        }
+
         $folderFilePath = $folderBasePath.'/'.self::FOLDER_FILE;
 
         if (! isset($filesByPath[$folderFilePath])) {
@@ -354,7 +363,8 @@ class YamlCollectionSerializer
                     $filesByPath,
                     $collection,
                     $folder->id,
-                    $childOrder++
+                    $childOrder++,
+                    $depth + 1
                 );
             }
         }
