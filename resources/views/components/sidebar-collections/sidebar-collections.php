@@ -8,6 +8,7 @@ use App\Services\RemoteSyncService;
 use App\Services\SensitiveDataScanner;
 use App\Services\SessionLogService;
 use App\Services\WorkspaceService;
+use App\Support\BootLogger;
 use Beartropy\Ui\Traits\HasToasts;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\On;
@@ -36,6 +37,8 @@ new class extends Component
 
     public function mount(string $activeWorkspaceId): void
     {
+        BootLogger::log('sidebar-collections: mount() started');
+
         $this->activeWorkspaceId = $activeWorkspaceId;
         $this->sort = get_setting('collections.sort', 'a-z');
 
@@ -54,6 +57,8 @@ new class extends Component
             $ws->getSetting('ui.expanded_folders', []),
             true
         );
+
+        BootLogger::log('sidebar-collections: mount() complete');
     }
 
     #[Renderless]

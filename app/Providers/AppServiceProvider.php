@@ -36,6 +36,13 @@ class AppServiceProvider extends ServiceProvider
         $this->configureDefaults();
 
         BootLogger::log('AppServiceProvider::boot() complete');
+
+        // Log when the first request is fully handled (after all middleware + rendering)
+        if (! $this->app->runningInConsole()) {
+            $this->app->terminating(function (): void {
+                BootLogger::log('Request terminated (response sent)');
+            });
+        }
     }
 
     /**

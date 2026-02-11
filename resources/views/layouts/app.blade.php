@@ -10,7 +10,20 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body class="antialiased">
+        <script>window.__bootStart = performance.now();</script>
         {{ $slot }}
+        <script>
+            console.log('[boot] HTML rendered: ' + Math.round(performance.now() - window.__bootStart) + 'ms');
+            document.addEventListener('livewire:init', () => {
+                console.log('[boot] Livewire init: ' + Math.round(performance.now() - window.__bootStart) + 'ms');
+            });
+            document.addEventListener('livewire:navigated', () => {
+                console.log('[boot] Livewire navigated: ' + Math.round(performance.now() - window.__bootStart) + 'ms');
+            });
+            window.addEventListener('load', () => {
+                console.log('[boot] Window load: ' + Math.round(performance.now() - window.__bootStart) + 'ms');
+            });
+        </script>
     </body>
     <x-bt-toast position="bottom-right" />
 </html>

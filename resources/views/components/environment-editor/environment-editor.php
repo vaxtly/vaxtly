@@ -2,6 +2,7 @@
 
 use App\Models\Environment;
 use App\Services\VaultSyncService;
+use App\Support\BootLogger;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
@@ -30,7 +31,7 @@ new class extends Component
 
     public function mount(): void
     {
-        //
+        BootLogger::log('environment-editor: mount()');
     }
 
     #[On('workspace-switched')]

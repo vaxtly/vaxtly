@@ -6,6 +6,7 @@ use App\Models\RequestHistory;
 use App\Services\ScriptExecutionService;
 use App\Services\SensitiveDataScanner;
 use App\Services\VariableSubstitutionService;
+use App\Support\BootLogger;
 use App\Traits\HttpColorHelper;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Renderless;
@@ -92,6 +93,8 @@ new class extends Component
 
     public function mount(?string $initialActiveTabId = null, ?string $initialRequestId = null): void
     {
+        BootLogger::log('request-builder: mount() started');
+
         $this->activeTabId = $initialActiveTabId;
         $this->layout = get_setting('requests.layout', 'columns');
 
@@ -99,6 +102,8 @@ new class extends Component
         if ($initialRequestId) {
             $this->loadRequest($initialRequestId);
         }
+
+        BootLogger::log('request-builder: mount() complete');
     }
 
     #[On('layout-updated')]
