@@ -31,10 +31,13 @@
                 return;
             }
 
-            {{-- Ctrl/Cmd+W — close active tab --}}
+            {{-- Ctrl/Cmd+W — close active tab (skip pinned) --}}
             if (mod && e.key === 'w') {
                 e.preventDefault();
-                if ($wire.activeTabId) $wire.closeTab($wire.activeTabId);
+                if ($wire.activeTabId) {
+                    const tab = $wire.openTabs.find(t => t.id === $wire.activeTabId);
+                    if (tab && !tab.pinned) $wire.closeTab($wire.activeTabId);
+                }
                 return;
             }
 

@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Pin tabs via right-click context menu: pinned tabs anchor left, hide close button, survive "Close Other Tabs", and resist Ctrl+W / middle-click close
 - Keyboard shortcuts: Ctrl/Cmd+Enter (send), Ctrl/Cmd+S (save), Ctrl/Cmd+N (new request), Ctrl/Cmd+W (close tab), Ctrl+PageDown/PageUp (next/prev tab), Ctrl/Cmd+L (focus URL), Ctrl/Cmd+P (search sidebar), Ctrl/Cmd+B (toggle sidebar), Ctrl/Cmd+E (cycle environment), F1 (help)
 - Collapsible sidebar via Ctrl/Cmd+B with slide transition
 - Keyboard shortcuts section in the Help / User Guide modal

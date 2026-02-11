@@ -62,9 +62,10 @@ new class extends Component
             return;
         }
 
-        // Normalize missing type field (backward compat)
+        // Normalize missing fields (backward compat)
         $savedTabs = collect($savedTabs)->map(function ($tab) {
             $tab['type'] = $tab['type'] ?? 'request';
+            $tab['pinned'] = $tab['pinned'] ?? false;
 
             return $tab;
         });
@@ -333,7 +334,12 @@ new class extends Component
     #[Renderless]
     public function shortcutCloseTab(): void
     {
-        if ($this->activeTabId) {
+        if (! $this->activeTabId) {
+            return;
+        }
+
+        $tab = collect($this->openTabs)->firstWhere('id', $this->activeTabId);
+        if ($tab && ! ($tab['pinned'] ?? false)) {
             $this->closeTab($this->activeTabId);
         }
     }
@@ -414,6 +420,7 @@ new class extends Component
             'folderId' => $request->folder_id,
             'name' => $request->name,
             'method' => $request->method,
+            'pinned' => false,
         ];
         $this->activeTabId = $tabId;
         $this->autoActivateEnvironment($request->collection_id, $request->folder_id);
@@ -444,6 +451,7 @@ new class extends Component
             'type' => 'environment',
             'environmentId' => $environmentId,
             'name' => $environment->name,
+            'pinned' => false,
         ];
         $this->activeTabId = $tabId;
         $this->dispatch('switch-tab', tabId: $tabId, type: 'environment', environmentId: $environmentId);
@@ -473,7 +481,7 @@ new class extends Component
     public function closeTab(string $tabId): void
     {
         $index = collect($this->openTabs)->search(fn ($t) => $t['id'] === $tabId);
-        if ($index !== false) {
+        if ($index !== false && ! ($this->openTabs[$index]['pinned'] ?? false)) {
             array_splice($this->openTabs, $index, 1);
             $this->dispatch('close-tab', tabId: $tabId);
 
@@ -492,6 +500,85 @@ new class extends Component
                 }
             }
         }
+    }
+
+    #[Renderless]
+    public function pinTab(string $tabId): void
+    {
+        foreach ($this->openTabs as &$tab) {
+            if ($tab['id'] === $tabId) {
+                $tab['pinned'] = true;
+                break;
+            }
+        }
+
+        $this->reorderTabs();
+    }
+
+    #[Renderless]
+    public function unpinTab(string $tabId): void
+    {
+        foreach ($this->openTabs as &$tab) {
+            if ($tab['id'] === $tabId) {
+                $tab['pinned'] = false;
+                break;
+            }
+        }
+
+        $this->reorderTabs();
+    }
+
+    #[Renderless]
+    public function closeOtherTabs(string $keepTabId): void
+    {
+        $closedActiveTab = false;
+
+        $this->openTabs = collect($this->openTabs)
+            ->filter(function ($tab) use ($keepTabId, &$closedActiveTab) {
+                if ($tab['id'] === $keepTabId || ($tab['pinned'] ?? false)) {
+                    return true;
+                }
+
+                if ($tab['id'] === $this->activeTabId) {
+                    $closedActiveTab = true;
+                }
+
+                $this->dispatch('close-tab', tabId: $tab['id']);
+
+                return false;
+            })
+            ->values()
+            ->all();
+
+        if ($closedActiveTab) {
+            $this->activeTabId = $keepTabId;
+            $tab = collect($this->openTabs)->firstWhere('id', $keepTabId);
+            if ($tab) {
+                $type = $tab['type'] ?? 'request';
+                $this->dispatch('switch-tab',
+                    tabId: $tab['id'],
+                    type: $type,
+                    requestId: $tab['requestId'] ?? null,
+                    environmentId: $tab['environmentId'] ?? null,
+                );
+            }
+        }
+    }
+
+    private function reorderTabs(): void
+    {
+        $pinned = [];
+        $unpinned = [];
+
+        foreach ($this->openTabs as $tab) {
+            if ($tab['pinned'] ?? false) {
+                $pinned[] = $tab;
+            } else {
+                $unpinned[] = $tab;
+            }
+        }
+
+        $this->openTabs = array_merge($pinned, $unpinned);
     }
 
     #[On('tab-name-updated')]
