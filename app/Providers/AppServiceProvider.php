@@ -115,6 +115,12 @@ class AppServiceProvider extends ServiceProvider
             @unlink($routeCache);
         }
 
+        // Delete config cache — may reference old log paths, settings, etc.
+        $configCache = $this->app->getCachedConfigPath();
+        if (file_exists($configCache)) {
+            @unlink($configCache);
+        }
+
         // Delete compiled Blade views — may embed stale asset URLs
         foreach (glob($this->app->storagePath('framework/views/*.php')) ?: [] as $file) {
             @unlink($file);
