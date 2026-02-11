@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Collection;
+use App\Models\Environment;
 use App\Models\Request;
 use Illuminate\Support\Facades\Http;
 
@@ -71,6 +72,7 @@ class ScriptExecutionService
 
             if ($value !== null) {
                 $this->setCollectionVariable($collectionId, $target, $value);
+                $this->mirrorToActiveEnvironment($collectionId, $target, $value);
             }
         }
     }
@@ -273,6 +275,43 @@ class ScriptExecutionService
         }
 
         $collection->update(['variables' => $variables]);
+    }
+
+    /**
+     * If the active environment has a variable with the same key, update it there too.
+     */
+    public function mirrorToActiveEnvironment(string $collectionId, string $key, string $value): void
+    {
+        $collection = Collection::find($collectionId);
+        if (! $collection) {
+            return;
+        }
+
+        $environment = Environment::active()
+            ->forWorkspace($collection->workspace_id)
+            ->first();
+
+        if (! $environment) {
+            return;
+        }
+
+        $variables = $environment->variables ?? [];
+        $found = false;
+
+        foreach ($variables as &$variable) {
+            if (($variable['key'] ?? '') === $key) {
+                $variable['value'] = $value;
+                $found = true;
+                break;
+            }
+        }
+        unset($variable);
+
+        if (! $found) {
+            return;
+        }
+
+        $environment->update(['variables' => $variables]);
     }
 
     /**

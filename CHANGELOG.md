@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Post-response scripts now mirror variables to the active environment if the same key exists there
+
 ### Fixed
 - Sensitive data scanner false-flagging collection variables used as `{{variable}}` references in requests (e.g., `{{sessionid}}` set by pre-scripts)
 

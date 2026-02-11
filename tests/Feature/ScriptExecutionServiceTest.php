@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Collection;
+use App\Models\Environment;
 use App\Models\Request;
 use App\Services\ScriptExecutionService;
 use App\Services\VariableSubstitutionService;
@@ -267,6 +268,76 @@ describe('executePostResponseScripts', function () {
 
         $collection->refresh();
         expect($collection->variables)->toBeEmpty();
+    });
+});
+
+describe('mirrorToActiveEnvironment', function () {
+    it('updates matching variable in active environment', function () {
+        $collection = Collection::factory()->create(['variables' => []]);
+        $environment = Environment::factory()->create([
+            'workspace_id' => $collection->workspace_id,
+            'is_active' => true,
+            'variables' => [
+                ['key' => 'token', 'value' => 'old-env-value', 'enabled' => true],
+            ],
+        ]);
+
+        $request = Request::factory()
+            ->for($collection)
+            ->withPostResponseScript('body.access_token', 'token')
+            ->create();
+
+        $body = json_encode(['access_token' => 'new-token']);
+        $this->service->executePostResponseScripts($request, 200, $body, []);
+
+        $environment->refresh();
+        expect($environment->variables[0]['value'])->toBe('new-token');
+    });
+
+    it('does not add new variable to environment', function () {
+        $collection = Collection::factory()->create(['variables' => []]);
+        $environment = Environment::factory()->create([
+            'workspace_id' => $collection->workspace_id,
+            'is_active' => true,
+            'variables' => [
+                ['key' => 'other_var', 'value' => 'unchanged', 'enabled' => true],
+            ],
+        ]);
+
+        $request = Request::factory()
+            ->for($collection)
+            ->withPostResponseScript('body.token', 'token')
+            ->create();
+
+        $body = json_encode(['token' => 'new-value']);
+        $this->service->executePostResponseScripts($request, 200, $body, []);
+
+        $environment->refresh();
+        expect($environment->variables)->toHaveCount(1)
+            ->and($environment->variables[0]['key'])->toBe('other_var')
+            ->and($environment->variables[0]['value'])->toBe('unchanged');
+    });
+
+    it('ignores inactive environments', function () {
+        $collection = Collection::factory()->create(['variables' => []]);
+        $environment = Environment::factory()->create([
+            'workspace_id' => $collection->workspace_id,
+            'is_active' => false,
+            'variables' => [
+                ['key' => 'token', 'value' => 'should-not-change', 'enabled' => true],
+            ],
+        ]);
+
+        $request = Request::factory()
+            ->for($collection)
+            ->withPostResponseScript('body.token', 'token')
+            ->create();
+
+        $body = json_encode(['token' => 'new-value']);
+        $this->service->executePostResponseScripts($request, 200, $body, []);
+
+        $environment->refresh();
+        expect($environment->variables[0]['value'])->toBe('should-not-change');
     });
 });
 
