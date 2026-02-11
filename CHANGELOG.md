@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.6] - 2026-02-11
+
+### Changed
+- Improve app logging: unified all logs into a single `vaxtly.log` file, added boot timing across all Livewire component mounts and frontend JS markers
+
 ## [0.2.5] - 2026-02-11
 
 ### Fixed
