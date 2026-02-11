@@ -415,16 +415,100 @@
                 <div x-show="$wire.requestId" x-cloak class="space-y-2" wire:ignore>
                     <template x-for="(script, index) in $wire.preRequestScripts" :key="index">
                         <div class="flex gap-2 items-center">
-                            <div class="flex-1">
-                                <select
-                                    x-model="$wire.preRequestScripts[index].request_id"
-                                    class="w-full py-1.5 px-2 text-sm rounded-md border shadow-sm bg-white dark:bg-gray-800/80 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-beartropy-500/30 focus:border-beartropy-500 transition-colors"
+                            <div
+                                class="flex-1 relative"
+                                x-data="{
+                                    open: false,
+                                    search: '',
+                                    get filtered() {
+                                        if (!this.search) return $wire.collectionRequests;
+                                        const s = this.search.toLowerCase();
+                                        return $wire.collectionRequests.filter(r => r.name.toLowerCase().includes(s) || r.method.toLowerCase().includes(s));
+                                    },
+                                    get selected() {
+                                        return $wire.collectionRequests.find(r => r.id === $wire.preRequestScripts[index]?.request_id);
+                                    },
+                                    select(req) {
+                                        $wire.preRequestScripts[index].request_id = req.id;
+                                        this.close();
+                                    },
+                                    close() { this.open = false; this.search = ''; },
+                                    toggle() {
+                                        this.open = !this.open;
+                                        if (this.open) this.$nextTick(() => this.$refs.searchInput?.focus());
+                                    },
+                                    methodColor(method) {
+                                        return {
+                                            'GET': 'text-emerald-600 dark:text-emerald-400',
+                                            'POST': 'text-blue-600 dark:text-blue-400',
+                                            'PUT': 'text-amber-600 dark:text-amber-400',
+                                            'PATCH': 'text-orange-600 dark:text-orange-400',
+                                            'DELETE': 'text-red-600 dark:text-red-400',
+                                        }[(method || '').toUpperCase()] || 'text-gray-600 dark:text-gray-400';
+                                    }
+                                }"
+                                @keydown.escape.stop="close()"
+                            >
+                                <button
+                                    @click="toggle()"
+                                    type="button"
+                                    class="w-full flex items-center gap-2 py-1.5 pl-2.5 pr-2 text-sm rounded-md border shadow-sm bg-white dark:bg-gray-800/80 border-gray-300 dark:border-gray-600 text-left cursor-pointer transition-colors hover:border-gray-400 dark:hover:border-gray-500 focus:outline-none focus:ring-2 focus:ring-beartropy-500/30 focus:border-beartropy-500"
                                 >
-                                    <option value="">Select a request...</option>
-                                    <template x-for="req in $wire.collectionRequests" :key="req.id">
-                                        <option :value="req.id" x-text="req.method.toUpperCase() + ' ' + req.name"></option>
+                                    <template x-if="selected">
+                                        <span class="flex items-center gap-1.5 min-w-0 flex-1">
+                                            <span class="font-mono font-bold text-xs tracking-tighter shrink-0" :class="methodColor(selected.method)" x-text="selected.method.toUpperCase()"></span>
+                                            <span class="truncate text-gray-900 dark:text-gray-100" x-text="selected.name"></span>
+                                        </span>
                                     </template>
-                                </select>
+                                    <template x-if="!selected">
+                                        <span class="flex-1 text-gray-400 dark:text-gray-500">Select a request...</span>
+                                    </template>
+                                    <svg class="w-4 h-4 text-gray-400 shrink-0 transition-transform duration-200" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                    </svg>
+                                </button>
+
+                                <div
+                                    x-show="open"
+                                    x-cloak
+                                    x-transition:enter="transition ease-out duration-100"
+                                    x-transition:enter-start="opacity-0 scale-95"
+                                    x-transition:enter-end="opacity-100 scale-100"
+                                    x-transition:leave="transition ease-in duration-75"
+                                    x-transition:leave-start="opacity-100 scale-100"
+                                    x-transition:leave-end="opacity-0 scale-95"
+                                    @click.away="close()"
+                                    class="absolute top-full left-0 mt-1 w-full z-50 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden"
+                                >
+                                    <div class="p-1.5 border-b border-gray-200 dark:border-gray-700">
+                                        <input
+                                            x-ref="searchInput"
+                                            x-model="search"
+                                            type="text"
+                                            placeholder="Search requests..."
+                                            class="w-full py-1 px-2 text-xs rounded border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-beartropy-500/30"
+                                        >
+                                    </div>
+                                    <div class="max-h-52 overflow-y-auto beartropy-thin-scrollbar py-1">
+                                        <template x-for="req in filtered" :key="req.id">
+                                            <button
+                                                @click="select(req)"
+                                                type="button"
+                                                class="w-full flex items-center gap-2 px-2.5 py-2 text-xs text-left transition-colors cursor-pointer"
+                                                :class="$wire.preRequestScripts[index]?.request_id === req.id
+                                                    ? 'bg-blue-50 dark:bg-blue-900/30'
+                                                    : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'"
+                                            >
+                                                <span class="font-mono font-bold tracking-tighter shrink-0" :class="methodColor(req.method)" x-text="req.method.toUpperCase()"></span>
+                                                <span class="truncate flex-1 text-gray-700 dark:text-gray-200" x-text="req.name"></span>
+                                                <svg x-show="$wire.preRequestScripts[index]?.request_id === req.id" class="w-3 h-3 text-blue-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                                </svg>
+                                            </button>
+                                        </template>
+                                        <div x-show="filtered.length === 0" class="px-3 py-2 text-xs text-gray-400 dark:text-gray-500 text-center">No requests found</div>
+                                    </div>
+                                </div>
                             </div>
                             <button
                                 @click="$wire.removePreRequestScript(index)"
@@ -459,15 +543,66 @@
                 <div class="space-y-2" wire:ignore>
                     <template x-for="(script, index) in $wire.postResponseScripts" :key="index">
                         <div class="flex gap-2 items-center">
-                            <div class="w-40 shrink-0">
-                                <select
-                                    x-model="$wire.postResponseScripts[index].source_type"
-                                    class="w-full h-[34px] px-2 text-xs rounded-md border shadow-sm bg-white dark:bg-gray-800/80 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-beartropy-500/30 focus:border-beartropy-500 transition-colors"
+                            <div
+                                class="w-40 shrink-0 relative"
+                                x-data="{
+                                    open: false,
+                                    options: [
+                                        { value: 'body', label: 'Response Body' },
+                                        { value: 'header', label: 'Header' },
+                                        { value: 'status', label: 'Status Code' }
+                                    ],
+                                    get selectedLabel() {
+                                        const v = $wire.postResponseScripts[index]?.source_type || 'body';
+                                        return this.options.find(o => o.value === v)?.label || 'Response Body';
+                                    },
+                                    select(value) {
+                                        $wire.postResponseScripts[index].source_type = value;
+                                        this.open = false;
+                                    },
+                                    toggle() { this.open = !this.open; }
+                                }"
+                                @keydown.escape.stop="open = false"
+                            >
+                                <button
+                                    @click="toggle()"
+                                    type="button"
+                                    class="w-full flex items-center gap-1 h-[34px] pl-2.5 pr-2 text-xs rounded-md border shadow-sm bg-white dark:bg-gray-800/80 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-left cursor-pointer transition-colors hover:border-gray-400 dark:hover:border-gray-500 focus:outline-none focus:ring-2 focus:ring-beartropy-500/30 focus:border-beartropy-500"
                                 >
-                                    <option value="body">Response Body</option>
-                                    <option value="header">Header</option>
-                                    <option value="status">Status Code</option>
-                                </select>
+                                    <span class="truncate flex-1" x-text="selectedLabel"></span>
+                                    <svg class="w-3.5 h-3.5 text-gray-400 shrink-0 transition-transform duration-200" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                    </svg>
+                                </button>
+
+                                <div
+                                    x-show="open"
+                                    x-cloak
+                                    x-transition:enter="transition ease-out duration-100"
+                                    x-transition:enter-start="opacity-0 scale-95"
+                                    x-transition:enter-end="opacity-100 scale-100"
+                                    x-transition:leave="transition ease-in duration-75"
+                                    x-transition:leave-start="opacity-100 scale-100"
+                                    x-transition:leave-end="opacity-0 scale-95"
+                                    @click.away="open = false"
+                                    class="absolute top-full left-0 mt-1 w-full z-50 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden py-1"
+                                >
+                                    <template x-for="opt in options" :key="opt.value">
+                                        <button
+                                            @click="select(opt.value)"
+                                            type="button"
+                                            class="w-full flex items-center gap-2 px-2.5 py-2 text-xs text-left transition-colors cursor-pointer"
+                                            :class="($wire.postResponseScripts[index]?.source_type || 'body') === opt.value
+                                                ? 'bg-blue-50 dark:bg-blue-900/30'
+                                                : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'"
+                                        >
+                                            <span class="flex-1 text-gray-700 dark:text-gray-200" x-text="opt.label"></span>
+                                            <svg x-show="($wire.postResponseScripts[index]?.source_type || 'body') === opt.value" class="w-3 h-3 text-blue-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                            </svg>
+                                        </button>
+                                    </template>
+                                </div>
                             </div>
                             <div class="flex-1" x-show="$wire.postResponseScripts[index]?.source_type !== 'status'">
                                 <input
@@ -482,7 +617,7 @@
                                     <input
                                         x-model="$wire.postResponseScripts[index].target"
                                         placeholder="varName"
-                                        class="w-full py-1.5 pl-6 pr-6 text-sm font-mono rounded-md border shadow-sm bg-white dark:bg-gray-800/80 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-beartropy-500/30 focus:border-beartropy-500 transition-colors"
+                                        class="w-full py-1.5 pl-6 pr-6 text-sm text-center font-mono rounded-md border shadow-sm bg-white dark:bg-gray-800/80 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-beartropy-500/30 focus:border-beartropy-500 transition-colors"
                                     >
                                     <span class="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-purple-500 dark:text-purple-400 font-mono pointer-events-none">&#125;&#125;</span>
                                 </div>

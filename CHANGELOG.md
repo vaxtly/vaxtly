@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Pre-request script select showing empty when reopening a request despite the script still working
+- Select chevron overlapping right border in scripts tab dropdowns
+
+### Changed
+- Replaced native HTML selects in scripts tab with custom searchable dropdowns matching the app's design language
+- Centered variable name input text in post-response scripts
+
 ## [0.2.0] - 2026-02-11
 
 ### Added
