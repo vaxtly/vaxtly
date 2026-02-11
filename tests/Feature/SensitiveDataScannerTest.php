@@ -134,6 +134,28 @@ it('detects plain-text collection variable values', function () {
         ->and($findings[0]['key'])->toBe('api_key');
 });
 
+it('skips collection variables referenced via {{name}} in requests', function () {
+    $collection = Collection::factory()->create([
+        'variables' => [
+            ['key' => 'sessionid', 'value' => 'abc123session', 'enabled' => true],
+            ['key' => 'api_key', 'value' => 'sk-unreferenced-key', 'enabled' => true],
+        ],
+    ]);
+    Request::factory()->for($collection)->create([
+        'headers' => [
+            ['key' => 'Cookie', 'value' => 'SessionID={{sessionid}}', 'enabled' => true],
+        ],
+    ]);
+
+    $findings = $this->scanner->scanCollection($collection);
+
+    // sessionid is referenced via {{sessionid}} → skipped
+    // api_key is NOT referenced → flagged
+    expect($findings)->toHaveCount(1)
+        ->and($findings[0]['source'])->toBe('variable')
+        ->and($findings[0]['key'])->toBe('api_key');
+});
+
 it('ignores values with variable references', function () {
     $collection = Collection::factory()->create();
     Request::factory()->for($collection)->create([

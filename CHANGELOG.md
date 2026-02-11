@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Sensitive data scanner false-flagging collection variables used as `{{variable}}` references in requests (e.g., `{{sessionid}}` set by pre-scripts)
+
 ## [0.2.1] - 2026-02-11
 
 ### Added

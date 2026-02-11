@@ -125,7 +125,8 @@ class SensitiveDataScanner
             $findings = array_merge($findings, $this->scanRequest($request));
         }
 
-        $findings = array_merge($findings, $this->scanCollectionVariables($collection));
+        $referencedVars = $this->collectReferencedVariables($requests);
+        $findings = array_merge($findings, $this->scanCollectionVariables($collection, $referencedVars));
 
         return $findings;
     }
@@ -402,7 +403,37 @@ class SensitiveDataScanner
     /**
      * @return array<int, array{source: string, request_name: string|null, request_id: string|null, field: string, key: string, masked_value: string}>
      */
-    protected function scanCollectionVariables(Collection $collection): array
+    /**
+     * Collect all variable names referenced via {{...}} in request data.
+     *
+     * @param  \Illuminate\Support\Collection<int, Request>  $requests
+     * @return array<int, string>
+     */
+    protected function collectReferencedVariables($requests): array
+    {
+        $vars = [];
+
+        foreach ($requests as $request) {
+            $haystack = json_encode([
+                $request->url,
+                $request->headers,
+                $request->query_params,
+                $request->body,
+                $request->auth,
+            ]);
+
+            preg_match_all('/\{\{(.+?)\}\}/', $haystack, $matches);
+            $vars = array_merge($vars, $matches[1]);
+        }
+
+        return array_unique($vars);
+    }
+
+    /**
+     * @param  array<int, string>  $referencedVars  Variable names used as {{...}} in requests
+     * @return array<int, array{source: string, request_name: string|null, request_id: string|null, field: string, key: string, masked_value: string}>
+     */
+    protected function scanCollectionVariables(Collection $collection, array $referencedVars = []): array
     {
         $findings = [];
         $allSensitiveKeys = array_merge(self::SENSITIVE_HEADER_KEYS, self::SENSITIVE_PARAM_KEYS);
@@ -416,6 +447,13 @@ class SensitiveDataScanner
             }
 
             if ($this->isVariableReference($value)) {
+                continue;
+            }
+
+            // Skip variables actively used as {{name}} references — their values
+            // are dynamic (often set by pre-request scripts) and stale stored
+            // values shouldn't block sync.
+            if (in_array($key, $referencedVars, true)) {
                 continue;
             }
 
