@@ -3,13 +3,15 @@
         mode: @js($mode),
         search: '',
         collectionsAllExpanded: false,
+        selectedEnvId: @js($selectedEnvironmentId),
     }"
     x-on:collections-expanded-state.window="collectionsAllExpanded = $event.detail.allExpanded"
     x-on:focus-sidebar-search.window="$nextTick(() => { const el = $root.querySelector('[data-sidebar-search] input'); if (el) { el.focus(); el.select(); } })"
-    x-on:sidebar-scroll-to.window="$nextTick(() => { const el = $root.querySelector($event.detail.selector); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); })"
+    x-on:sidebar-scroll-to.window="$nextTick(() => { const el = $root.querySelector($event.detail.selector); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); })"
     x-on:switch-tab.window="
         const type = $event.detail.type || 'request';
         mode = type === 'environment' ? 'environments' : 'collections';
+        if (type === 'environment' && $event.detail.environmentId) selectedEnvId = $event.detail.environmentId;
         $wire.focusOnTab($event.detail.tabId, type, $event.detail.requestId || null, $event.detail.environmentId || null);
     "
     class="h-full flex flex-col bg-gray-50 dark:bg-gray-950 border-r border-gray-200 dark:border-gray-800">

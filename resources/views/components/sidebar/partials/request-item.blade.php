@@ -1,9 +1,10 @@
 <div
     wire:key="request-{{ $request->id }}"
     data-request-id="{{ $request->id }}"
-    @click="Livewire.dispatch('open-request-tab', { requestId: '{{ $request->id }}' })"
+    @click="activeRequestId = '{{ $request->id }}'; Livewire.dispatch('open-request-tab', { requestId: '{{ $request->id }}' })"
     x-sort:item="'{{ $request->id }}'"
     class="group flex items-center gap-2 px-2 py-1.5 cursor-pointer hover:bg-gray-200/50 dark:hover:bg-gray-800/50 rounded transition-colors"
+    :class="activeRequestId === '{{ $request->id }}' && '!bg-beartropy-100/60 dark:!bg-beartropy-900/20'"
 >
     <div x-sort:handle class="cursor-grab active:cursor-grabbing p-0.5 -ml-1 text-gray-300 hover:text-gray-500 dark:text-gray-600 dark:hover:text-gray-400 shrink-0" :class="{ '!hidden': !{{ $isDragEnabled ? 'true' : 'false' }} || search }" @click.stop>
         <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">

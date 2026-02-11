@@ -2,10 +2,11 @@
     <div
         wire:key="environment-{{ $environment->id }}"
         data-environment-id="{{ $environment->id }}"
-        wire:click="selectEnvironment('{{ $environment->id }}')"
+        @click="selectedEnvId = '{{ $environment->id }}'; $wire.selectEnvironment('{{ $environment->id }}')"
         data-search-text="{{ strtolower($environment->name) }}"
         x-show="!search || $el.dataset.searchText.includes(search.toLowerCase())"
-        class="group flex items-center justify-between px-2 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors {{ $selectedEnvironmentId === $environment->id ? 'bg-blue-50 dark:bg-blue-900/30' : '' }}"
+        class="group flex items-center justify-between px-2 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
+        :class="selectedEnvId === '{{ $environment->id }}' && '!bg-beartropy-300/60 dark:!bg-beartropy-900/20'"
     >
         <div class="flex items-center gap-2 min-w-0 flex-1">
             {{-- Active Indicator --}}

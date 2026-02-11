@@ -7,9 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
-- Sidebar performance: reverted x-show approach that slowed all sidebar operations; `focusOnTab` now uses `skipRender()` since expand/scroll is fully Alpine-driven (no server re-render needed)
-- Sidebar no longer auto-switches to collections mode on tab change (avoids 2s re-render of 50+ collections); environments auto-switch still works (lightweight)
+### Changed
+- Extracted collections tree into `sidebar-collections` child Livewire component for instant mode switching between collections and environments (previously ~2s delay)
+- Sidebar scroll-to-request now centers the item in the viewport instead of minimal scroll
+
+### Added
+- Subtle highlight for the active request and selected environment in the sidebar
 
 ## [0.2.3] - 2026-02-11
 

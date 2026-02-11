@@ -1,5 +1,6 @@
 <div
     x-data="{
+        activeRequestId: null,
         expandedCollections: @js($expandedCollections),
         expandedFolders: @js($expandedFolders),
         get allExpanded() {
@@ -27,6 +28,7 @@
     }"
     x-on:sidebar-expanded-sync.window="expandedCollections = $event.detail.collections; expandedFolders = $event.detail.folders"
     x-on:toggle-all-collections.window="toggleAllCollections()"
+    x-on:switch-tab.window="if ($event.detail.type !== 'environment') activeRequestId = $event.detail.requestId || null"
     x-effect="$dispatch('collections-expanded-state', { allExpanded: allExpanded })"
 >
     @include('components.sidebar.partials.collections-list')
