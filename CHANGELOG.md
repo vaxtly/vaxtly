@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.8] - 2026-02-13
+
+### Fixed
+- Drag and drop file upload not working in Import Data modal ([#1](https://github.com/vaxtly/vaxtly/issues/1))
+
 ## [0.2.7] - 2026-02-13
 
 ### Fixed

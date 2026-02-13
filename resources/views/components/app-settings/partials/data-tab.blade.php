@@ -109,7 +109,7 @@
         x-data="{ isDragging: false }"
         x-on:dragover.prevent="isDragging = true"
         x-on:dragleave.prevent="isDragging = false"
-        x-on:drop.prevent="isDragging = false"
+        x-on:drop.prevent="isDragging = false; if ($event.dataTransfer.files.length) $wire.upload('importFile', $event.dataTransfer.files[0])"
         class="relative"
     >
         <label
